@@ -710,11 +710,56 @@ nano .env</code></pre>
   <section id="install">
     <h2>자동 설치 스크립트</h2>
 
-    <p>EC2에 SSH 접속 후 저장소를 클론하여 스크립트를 실행합니다.</p>
+    <h3>원클릭 설치 (로컬에서 실행)</h3>
+    <p>SSH 접속 없이 로컬 터미널에서 명령어 하나로 EC2에 자동 설치합니다.</p>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">⚡</span>
+      <div class="callout-text">
+        <strong>원본 Claude Code 방식과 동일한 UX</strong><br>
+        로컬에서 변수 4개 설정 후 실행 → EC2에 자동 설치 + 텔레그램 봇 연동 + Gemini CLI 시작
+      </div>
+    </div>
 
     <div class="code-wrap">
       <div class="code-header">
-        <span class="code-lang">bash</span>
+        <span class="code-lang">bash (로컬 터미널)</span>
+        <button class="copy-btn" onclick="copyCode(this)">복사</button>
+      </div>
+      <pre><code><span class="cm"># 변수 설정</span>
+<span class="ck">export</span> <span class="cv">PEM</span>=<span class="cs">~/Downloads/my-key.pem</span>
+<span class="ck">export</span> <span class="cv">IP</span>=<span class="cs">13.124.xxx.xxx</span>
+<span class="ck">export</span> <span class="cv">GEMINI_KEY</span>=<span class="cs">your_gemini_api_key_here</span>
+<span class="ck">export</span> <span class="cv">TOKEN</span>=<span class="cs">1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR</span>
+<span class="ck">export</span> <span class="cv">URL</span>=<span class="cs">https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/main/basic_setup_ec2_gemini.sh</span>
+
+<span class="cm"># 실행 (위 변수 설정 후)</span>
+ssh -t -i <span class="cs">"$PEM"</span> ubuntu@<span class="cv">$IP</span> <span class="cs">"bash -ic \"export GEMINI_API_KEY='$GEMINI_KEY' TELEGRAM_BOT_TOKEN='$TOKEN'; bash &lt;(curl -sL $URL) &amp;&amp; source ~/.bashrc &amp;&amp; npx -y service-setup-cokacdir $TOKEN &amp;&amp; gemini\""</span></code></pre>
+    </div>
+
+    <table class="compare-table" style="margin-top: 12px;">
+      <thead><tr><th>변수</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td><code>PEM</code></td><td>EC2 접속용 PEM 키파일 경로</td></tr>
+        <tr><td><code>IP</code></td><td>EC2 인스턴스 공인 IP 주소</td></tr>
+        <tr><td><code>GEMINI_KEY</code></td><td>Google AI Studio 또는 GCP API 키</td></tr>
+        <tr><td><code>TOKEN</code></td><td>텔레그램 봇 토큰 (@BotFather에서 발급)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-warn" style="margin-top: 16px;">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-text">
+        Amazon Linux를 사용하는 경우 <code>ubuntu@$IP</code> → <code>ec2-user@$IP</code> 로 변경하세요.
+      </div>
+    </div>
+
+    <h3>수동 설치 (서버에서 직접)</h3>
+    <p>원클릭 방식이 동작하지 않거나 단계별 확인이 필요할 때 사용합니다.</p>
+
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-lang">bash (EC2 서버)</span>
         <button class="copy-btn" onclick="copyCode(this)">복사</button>
       </div>
       <pre><code><span class="cm"># 1. 저장소 클론</span>
@@ -732,7 +777,10 @@ chmod +x basic_setup_ec2_gemini.sh
 <span class="cm"># 4. 환경변수 재로드</span>
 <span class="ck">source</span> ~/.bashrc
 
-<span class="cm"># 5. Gemini CLI 시작</span>
+<span class="cm"># 5. 텔레그램 봇 연동</span>
+npx -y service-setup-cokacdir $TELEGRAM_BOT_TOKEN
+
+<span class="cm"># 6. Gemini CLI 시작</span>
 gemini</code></pre>
     </div>
 
@@ -740,9 +788,7 @@ gemini</code></pre>
       <span class="callout-icon">📦</span>
       <div class="callout-text">
         <strong>GitHub 저장소</strong><br>
-        <a href="https://github.com/20eung/gemini-sandbox" target="_blank" style="color:var(--accent-light)">https://github.com/20eung/gemini-sandbox</a><br>
-        스크립트 직접 다운로드:
-        <code>https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/main/basic_setup_ec2_gemini.sh</code>
+        <a href="https://github.com/20eung/gemini-sandbox" target="_blank" style="color:var(--accent-light)">https://github.com/20eung/gemini-sandbox</a>
       </div>
     </div>
   </section>

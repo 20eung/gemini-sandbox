@@ -117,6 +117,16 @@ else
     echo "         export GEMINI_API_KEY=\"your_key_here\""
 fi
 
+# TELEGRAM_BOT_TOKEN 영구 등록
+if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
+    if ! grep -q "TELEGRAM_BOT_TOKEN" "$HOME/.bashrc"; then
+        echo "export TELEGRAM_BOT_TOKEN=\"$TELEGRAM_BOT_TOKEN\"" >> "$HOME/.bashrc"
+        echo "  [OK] TELEGRAM_BOT_TOKEN added to ~/.bashrc"
+    else
+        echo "  [SKIP] TELEGRAM_BOT_TOKEN already in ~/.bashrc"
+    fi
+fi
+
 # -------------------------------------------------------------
 # [6] Playwright 자동 설치 (MCP 서버용)
 # -------------------------------------------------------------

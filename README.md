@@ -9,6 +9,30 @@
 
 ---
 
+## 원클릭 설치 (로컬에서 실행)
+
+> 아래 변수 4개를 설정하고 마지막 줄을 실행하면 EC2에 자동으로 설치됩니다.
+
+```bash
+export PEM=~/Downloads/my-key.pem
+export IP=13.124.xxx.xxx
+export GEMINI_KEY=your_gemini_api_key_here
+export TOKEN=1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR
+export URL=https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/main/basic_setup_ec2_gemini.sh
+ssh -t -i "$PEM" ubuntu@$IP "bash -ic \"export GEMINI_API_KEY='$GEMINI_KEY' TELEGRAM_BOT_TOKEN='$TOKEN'; bash <(curl -sL $URL) && source ~/.bashrc && npx -y service-setup-cokacdir $TOKEN && gemini\""
+```
+
+| 변수 | 설명 |
+|------|------|
+| `PEM` | EC2 접속용 PEM 키파일 경로 |
+| `IP` | EC2 인스턴스 공인 IP |
+| `GEMINI_KEY` | Google AI Studio 또는 GCP API 키 |
+| `TOKEN` | 텔레그램 봇 토큰 (`@BotFather`에서 발급) |
+
+> Amazon Linux를 사용하는 경우 `ubuntu@$IP` → `ec2-user@$IP` 로 변경하세요.
+
+---
+
 ## 전체 아키텍처
 
 ```
@@ -20,7 +44,6 @@
 ```
 
 사용자가 텔레그램으로 메시지를 보내면 EC2의 Gemini CLI가 AI 응답을 생성하여 텔레그램으로 회신합니다.
-EC2 서버가 실행 중인 한, 어디서나 텔레그램 앱으로 AI와 소통할 수 있습니다.
 
 ---
 
@@ -49,63 +72,33 @@ EC2 서버가 실행 중인 한, 어디서나 텔레그램 앱으로 AI와 소�
 
 ---
 
-## 빠른 시작
+## 수동 설치 (서버에서 직접)
 
-### 1. EC2 SSH 접속
+원클릭 방식이 동작하지 않거나 단계별 확인이 필요할 때 사용합니다.
 
 ```bash
-# PEM 키파일 권한 설정 (최초 1회)
-chmod 400 ~/Downloads/my-key.pem
-
-# SSH 접속
+# 1. SSH 접속
 ssh -i ~/Downloads/my-key.pem ubuntu@<EC2_PUBLIC_IP>
-```
 
-| AMI 종류 | 기본 사용자명 |
-|----------|--------------|
-| Ubuntu | `ubuntu` |
-| Amazon Linux 2 | `ec2-user` |
-| Debian | `admin` |
-
-### 2. 저장소 클론
-
-```bash
+# 2. 저장소 클론
 git clone https://github.com/20eung/gemini-sandbox.git
 cd gemini-sandbox
-```
 
-### 3. 환경변수 설정
-
-```bash
+# 3. 환경변수 파일 준비
 cp .env.sample .env
 nano .env  # GEMINI_API_KEY, TELEGRAM_BOT_TOKEN 입력
-```
 
-`.env` 파일 내용:
-
-```bash
-# Gemini CLI - GCP API 키 (필수)
-GEMINI_API_KEY=your_gcp_api_key_here
-
-# 텔레그램 봇 토큰 (필수)
-TELEGRAM_BOT_TOKEN=1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR
-
-# Claude Code - AWS Bedrock (함께 사용하는 경우)
-CLAUDE_CODE_USE_BEDROCK=1
-AWS_REGION=ap-northeast-2
-```
-
-### 4. 스크립트 실행
-
-```bash
+# 4. 실행 권한 부여 후 설치
 chmod +x basic_setup_ec2_gemini.sh
 ./basic_setup_ec2_gemini.sh
-```
 
-### 5. 환경변수 재로드 및 실행
-
-```bash
+# 5. 환경변수 재로드
 source ~/.bashrc
+
+# 6. 텔레그램 봇 연동
+npx -y service-setup-cokacdir $TELEGRAM_BOT_TOKEN
+
+# 7. Gemini CLI 시작
 gemini
 ```
 
@@ -115,12 +108,12 @@ gemini
 
 | 단계 | 내용 | 비고 |
 |------|------|------|
-| [0] `.env` 로드 | 스크립트 위치 또는 홈 디렉토리에서 `.env` 자동 로드 | `set -a; source .env; set +a` |
+| [0] `.env` 로드 | 스크립트 위치 또는 홈 디렉토리에서 `.env` 자동 로드 | 없으면 env 변수 직접 사용 |
 | [1] 스왑 설정 | 16GB 스왑 파일 생성 | 이미 존재하면 건너뜀 (idempotent) |
 | [2] cokacdir | `cd` 명령 개선 도구 설치 | 이미 설치되면 건너뜀 |
 | [3] NVM + Node.js 24 | NVM v0.40.1 설치 후 Node.js 24 활성화 | 서브쉘 버그 수정됨 |
 | [4] Gemini CLI | `npm install -g @google/gemini-cli` | 이미 설치되면 건너뜀 |
-| [5] API 키 등록 | `GEMINI_API_KEY`를 `~/.bashrc`에 영구 등록 | 중복 등록 방지 |
+| [5] API 키 등록 | `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`을 `~/.bashrc`에 영구 등록 | 중복 등록 방지 |
 | [6] Playwright | 아키텍처 감지 후 브라우저 설치 | x86_64→chrome, ARM→chromium |
 | [7] Playwright MCP | `@playwright/mcp` 설치 + `~/.gemini/settings.json` 생성 | Gemini CLI 웹 탐색 활성화 |
 | [8] PATH 확인 | `~/.local/bin`, NVM 경로 `.bashrc` 등록 | 중복 방지 |
@@ -151,38 +144,12 @@ Claude Code와 달리 Gemini CLI는 Playwright가 내장되어 있지 않습니�
 }
 ```
 
-설치 후 Gemini CLI에서 웹 탐색, 스크린샷 캡처, 폼 자동화 기능을 사용할 수 있습니다.
-
 ---
 
 ## GEMINI.md 설정
 
 Claude Code의 `CLAUDE.md`처럼, Gemini CLI는 `GEMINI.md` 파일을 프로젝트 컨텍스트로 사용합니다.
 프로젝트 루트의 `GEMINI.md`가 자동으로 로드됩니다.
-
----
-
-## 텔레그램 봇 연동
-
-### 봇 토큰 발급
-
-1. 텔레그램에서 `@BotFather` 검색 후 대화 시작
-2. `/newbot` 명령 입력
-3. 봇 표시 이름 입력 (예: `My Gemini AI`)
-4. 봇 사용자명 입력 (예: `my_gemini_bot`, 반드시 `bot`으로 끝나야 함)
-5. 발급된 토큰 복사 → `.env`의 `TELEGRAM_BOT_TOKEN`에 저장
-
-> **봇 채팅 ID 확인**: 봇에게 메시지를 보낸 후 브라우저에서
-> `https://api.telegram.org/bot<TOKEN>/getUpdates` 접속 → `chat.id` 값 확인
-
-### 토큰 환경변수 등록
-
-```bash
-# .env 파일에 토큰이 있으면 자동 등록됩니다
-# 수동 등록이 필요한 경우:
-echo 'export TELEGRAM_BOT_TOKEN="your_token_here"' >> ~/.bashrc
-source ~/.bashrc
-```
 
 ---
 
@@ -193,11 +160,9 @@ source ~/.bashrc
 export GEMINI_API_KEY="your_gcp_api_key_here"
 ```
 
-> **OAuth 방식은 사용하지 마세요.** OAuth는 브라우저가 필요하며 서버 환경에 부적합합니다.
-> 반드시 **API 키 방식**(`GEMINI_API_KEY`)을 사용하세요.
+> **OAuth 방식은 사용하지 마세요.** 서버 환경에 부적합합니다. 반드시 **API 키 방식**을 사용하세요.
 
 > **EC2 서버 사용 가능 여부**: Google Gemini API 이용약관상 API 키를 통한 서버 사용은 허용됩니다.
-> 계정 정지 사례는 Gemini가 아닌 Anthropic Claude의 OAuth 남용에서 발생했습니다.
 
 ---
 
@@ -214,8 +179,7 @@ export GEMINI_API_KEY="your_gcp_api_key_here"
 | 컨텍스트 파일 | `CLAUDE.md` | `GEMINI.md` |
 | 설치 스크립트 | `basic_setup_ec2.sh` | `basic_setup_ec2_gemini.sh` |
 | 라이선스 | 상용 | Apache 2.0 (오픈소스) |
-| NVM 버그 수정 | ❌ | ✅ |
-| 스왑 중복 방지 | ❌ | ✅ |
+| 설치 방식 | 원클릭 (로컬 실행) | 원클릭 (로컬 실행) |
 
 ---
 
