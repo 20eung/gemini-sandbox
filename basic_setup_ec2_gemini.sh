@@ -229,10 +229,28 @@ EOF
 fi
 
 # -------------------------------------------------------------
-# [8] PATH 설정 확인
+# [8] claude → gemini --yolo 래퍼 생성 (cokacdir 텔레그램 봇 연동용)
 # -------------------------------------------------------------
 echo ""
-echo "[8] Checking PATH..."
+echo "[8] Creating claude wrapper for cokacdir compatibility..."
+mkdir -p "$HOME/.local/bin"
+CLAUDE_WRAPPER="$HOME/.local/bin/claude"
+if [ -f "$CLAUDE_WRAPPER" ] && grep -q "gemini --yolo" "$CLAUDE_WRAPPER" 2>/dev/null; then
+    echo "  [SKIP] claude wrapper already exists"
+else
+    cat > "$CLAUDE_WRAPPER" << 'WRAPPER'
+#!/bin/bash
+exec gemini --yolo "$@"
+WRAPPER
+    chmod +x "$CLAUDE_WRAPPER"
+    echo "  [OK] claude wrapper created: ~/.local/bin/claude → gemini --yolo"
+fi
+
+# -------------------------------------------------------------
+# [9] PATH 설정 확인
+# -------------------------------------------------------------
+echo ""
+echo "[9] Checking PATH..."
 if ! echo "$PATH" | grep -q "$HOME/.local/bin"; then
     echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
     echo "  [OK] ~/.local/bin added to PATH"

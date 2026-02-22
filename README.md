@@ -186,6 +186,8 @@ echo $TELEGRAM_BOT_TOKEN
 3. EC2의 Gemini CLI가 처리 후 답변 전송 확인
 4. Playwright MCP 활성화 시 웹 검색도 가능
 
+> **내부 동작**: 설치 스크립트는 `cokacdir`이 호출하는 `claude` 명령을 `gemini --yolo`로 연결하는 래퍼를 자동으로 생성합니다. `--yolo` 플래그는 비대화형(non-TTY) 환경에서 도구 실행 확인을 자동 승인합니다.
+
 ---
 
 ## Playwright MCP 설정
