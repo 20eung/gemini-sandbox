@@ -127,6 +127,67 @@ gemini
 
 ---
 
+## 설치 후 확인
+
+설치 완료 후 아래 명령으로 각 구성 요소를 확인합니다.
+
+```bash
+# 환경변수 재로드 (필수)
+source ~/.bashrc
+
+# 각 구성 요소 확인
+node -v                  # v24.x.x
+gemini --version         # Gemini CLI 버전
+playwright-cli --version # Playwright 버전
+cokacdir --version       # cokacdir 버전
+swapon --show            # 스왑 확인
+
+# API 키 확인
+echo $GEMINI_API_KEY     # 키 값 출력 확인
+
+# Gemini CLI 실행
+gemini
+```
+
+---
+
+## 텔레그램 봇 연동
+
+Gemini CLI 설치가 완료되면 텔레그램 봇을 연결하여 어디서나 AI와 소통할 수 있습니다.
+
+> EC2 서버가 24시간 실행 중이므로 텔레그램 앱이 있는 어떤 기기(모바일, 데스크톱, 태블릿)에서도 Gemini AI와 대화할 수 있습니다.
+
+### 1단계: 텔레그램 봇 토큰 발급
+
+1. 텔레그램에서 `@BotFather` 검색 후 대화 시작
+2. `/newbot` 명령 입력
+3. 봇 표시 이름 입력 (예: `My Gemini AI`)
+4. 봇 사용자명 입력 (예: `my_gemini_bot`, 반드시 `bot`으로 끝나야 함)
+5. 발급된 토큰 복사 → `.env`의 `TELEGRAM_BOT_TOKEN`에 저장
+
+> **봇 채팅 ID 확인**: 봇에게 메시지를 보낸 후 `https://api.telegram.org/bot<TOKEN>/getUpdates`를 브라우저에서 열면 `chat.id` 값을 확인할 수 있습니다.
+
+### 2단계: 환경변수에 봇 토큰 등록
+
+`.env` 파일에 토큰이 있으면 설치 스크립트가 자동으로 등록합니다. 수동 등록이 필요한 경우:
+
+```bash
+echo 'export TELEGRAM_BOT_TOKEN="your_token_here"' >> ~/.bashrc
+source ~/.bashrc
+
+# 확인
+echo $TELEGRAM_BOT_TOKEN
+```
+
+### 3단계: 봇 연동 테스트
+
+1. 텔레그램 앱에서 생성한 봇 검색 → 대화 시작
+2. 메시지 전송: *"안녕, 오늘 날씨 어때?"*
+3. EC2의 Gemini CLI가 처리 후 답변 전송 확인
+4. Playwright MCP 활성화 시 웹 검색도 가능
+
+---
+
 ## Playwright MCP 설정
 
 Claude Code와 달리 Gemini CLI는 Playwright가 내장되어 있지 않습니다. MCP 서버 방식으로 연동합니다.
@@ -180,6 +241,8 @@ export GEMINI_API_KEY="your_gcp_api_key_here"
 | 설치 스크립트 | `basic_setup_ec2.sh` | `basic_setup_ec2_gemini.sh` |
 | 라이선스 | 상용 | Apache 2.0 (오픈소스) |
 | 설치 방식 | 원클릭 (로컬 실행) | 원클릭 (로컬 실행) |
+| NVM 버그 수정 | 미수정 | 수정됨 |
+| 스왑 중복 방지 | 미적용 | 적용됨 |
 
 ---
 
@@ -194,18 +257,30 @@ export GEMINI_API_KEY="your_gcp_api_key_here"
 ## FAQ
 
 **Q. EC2 서버에서 Gemini CLI를 사용해도 계정이 정지되나요?**
-API 키 방식으로 사용하면 허용됩니다. 계정 정지 사례는 Anthropic Claude OAuth 남용 문제입니다.
+아니요. **API 키 방식**으로 사용하면 Google Gemini API 이용약관상 서버 사용이 허용됩니다. 계정 정지 사례는 Gemini가 아닌 Anthropic Claude의 OAuth 남용에서 발생했습니다.
+
+**Q. OAuth(Google 계정 로그인) 방식은 EC2에서 사용 가능한가요?**
+사용하지 마세요. OAuth 방식은 브라우저가 필요하며 서버 환경에 부적합합니다. 반드시 **API 키 방식**(`GEMINI_API_KEY`)을 사용하세요.
 
 **Q. ARM(aarch64) EC2에서도 Playwright가 동작하나요?**
 예. ARM 환경에서는 chromium 채널을 설치하고 `/opt/google/chrome/chrome`으로 symlink를 자동 생성합니다.
 
+**Q. Claude Code와 Gemini CLI를 같은 EC2에서 함께 사용할 수 있나요?**
+예. `.env` 파일에 두 설정을 모두 저장하고, 필요에 따라 `claude` 또는 `gemini` 명령을 선택하여 사용하면 됩니다.
+
 **Q. 스크립트 재실행이 안전한가요?**
-예. 각 단계에서 이미 설치된 경우 건너뜁니다 (idempotent).
+예. 각 단계에서 이미 설치된 경우 건너뜁니다 (idempotent). 스왑 파일 생성, NVM 설치, Gemini CLI 설치 모두 중복 실행 시 안전합니다.
+
+**Q. 텔레그램 봇 토큰이 없으면 사용할 수 없나요?**
+설치 자체는 토큰 없이도 진행됩니다. 하지만 텔레그램을 통한 원격 AI 소통을 위해서는 봇 토큰이 필요합니다. `@BotFather`에서 무료로 발급 가능합니다.
 
 **Q. 텔레그램 봇이 응답하지 않을 경우 어떻게 하나요?**
 1. EC2 인스턴스가 실행 중인지 확인
 2. `TELEGRAM_BOT_TOKEN` 환경변수가 올바르게 설정되어 있는지 확인
 3. EC2 보안 그룹에서 아웃바운드 연결(HTTPS 443)이 허용되어 있는지 확인
+
+**Q. Claude Code와 Gemini CLI를 텔레그램 봇 하나로 같이 사용할 수 있나요?**
+구현 방식에 따라 가능합니다. 봇 명령어로 AI를 전환하도록 설정할 수 있습니다. 예: `/gemini` → Gemini CLI, `/claude` → Claude Code 사용.
 
 ---
 
