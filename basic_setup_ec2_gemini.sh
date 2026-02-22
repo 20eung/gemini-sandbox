@@ -229,21 +229,104 @@ EOF
 fi
 
 # -------------------------------------------------------------
-# [8] claude → gemini --yolo 래퍼 생성 (cokacdir 텔레그램 봇 연동용)
+# [8] claude → gemini 브릿지 생성 (cokacdir 텔레그램 봇 연동용)
+#
+# cokacdir는 Claude Code CLI 형식으로 claude를 호출합니다:
+#   claude -p --allowedTools ... --output-format stream-json --append-system-prompt <text>
+#   (사용자 메시지는 stdin으로 전달)
+#
+# 이 Python 스크립트는:
+#   1. Claude 전용 플래그(--allowedTools, --append-system-prompt 등)를 파싱
+#   2. Gemini CLI로 실제 AI 응답 생성
+#   3. cokacdir가 이해하는 Claude stream-json 형식으로 변환 출력
 # -------------------------------------------------------------
 echo ""
-echo "[8] Creating claude wrapper for cokacdir compatibility..."
+echo "[8] Creating claude→gemini bridge for cokacdir..."
 mkdir -p "$HOME/.local/bin"
 CLAUDE_WRAPPER="$HOME/.local/bin/claude"
-if [ -f "$CLAUDE_WRAPPER" ] && grep -q "gemini --yolo" "$CLAUDE_WRAPPER" 2>/dev/null; then
-    echo "  [SKIP] claude wrapper already exists"
+if [ -f "$CLAUDE_WRAPPER" ] && grep -q "Gemini CLI bridge" "$CLAUDE_WRAPPER" 2>/dev/null; then
+    echo "  [SKIP] claude bridge already exists"
 else
     cat > "$CLAUDE_WRAPPER" << 'WRAPPER'
-#!/bin/bash
-exec gemini --yolo "$@"
+#!/usr/bin/env python3
+"""Claude Code CLI → Gemini CLI bridge (cokacdir 텔레그램 봇 연동용)"""
+import sys, os, subprocess, json, uuid, datetime
+
+LOG = '/tmp/claude-gemini.log'
+def log(m):
+    open(LOG, 'a').write(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {m}\n")
+
+def main():
+    args = sys.argv[1:]
+    system_parts, in_system, skip_next = [], False, False
+    for arg in args:
+        if skip_next: skip_next = False; continue
+        if in_system: system_parts.append(arg); continue
+        if arg in ('-p', '--print', '--verbose', '-v', '--no-verbose'): continue
+        if arg in ('--allowedTools', '--model', '-m', '--add-dir', '--cwd', '--output-format'):
+            skip_next = True; continue
+        if arg == '--append-system-prompt': in_system = True; continue
+
+    system_prompt = ' '.join(system_parts)
+    user_msg = ''
+    try:
+        if not sys.stdin.isatty():
+            user_msg = sys.stdin.read().strip()
+    except: pass
+
+    log(f"user: {user_msg[:80]}")
+    log(f"system(60): {system_prompt[:60]}")
+
+    if system_prompt and user_msg:
+        prompt = f"{system_prompt}\n\n{user_msg}"
+    elif user_msg:
+        prompt = user_msg
+    elif system_prompt:
+        prompt = system_prompt
+    else:
+        prompt = 'Hello'
+
+    result = subprocess.run(
+        ['gemini', '--yolo', '--output-format', 'text', '-p', prompt],
+        capture_output=True, text=True
+    )
+    log(f"exit:{result.returncode} stdout:{result.stdout[:80]}")
+
+    raw = result.stdout.strip()
+    lines = [l for l in raw.split('\n')
+             if not l.startswith('YOLO mode')
+             and not l.startswith('(node:')
+             and 'DeprecationWarning' not in l
+             and l.strip()]
+    response = '\n'.join(lines).strip()
+    log(f"response:{response[:80]}")
+
+    sid = str(uuid.uuid4())
+    if result.returncode != 0 or not response:
+        print(json.dumps({"type": "result", "subtype": "error", "is_error": True,
+            "result": result.stderr.strip() or "No response", "session_id": sid}), flush=True)
+        sys.exit(result.returncode or 1)
+
+    # Claude 호환 stream-json 출력 (cokacdir가 파싱하는 형식)
+    print(json.dumps({"type": "system", "subtype": "init", "session_id": sid,
+        "tools": [], "mcp_servers": [], "model": "claude-opus-4-5",
+        "permissionMode": "default", "cwd": os.getcwd()}), flush=True)
+    print(json.dumps({"type": "assistant", "message": {
+        "id": "msg_" + uuid.uuid4().hex[:20], "type": "message", "role": "assistant",
+        "content": [{"type": "text", "text": response}],
+        "model": "claude-opus-4-5", "stop_reason": "end_turn", "stop_sequence": None,
+        "usage": {"input_tokens": 100, "cache_creation_input_tokens": 0,
+                  "cache_read_input_tokens": 0, "output_tokens": 50}},
+        "session_id": sid}), flush=True)
+    print(json.dumps({"type": "result", "subtype": "success", "is_error": False,
+        "duration_ms": 5000, "duration_api_ms": 4000, "num_turns": 1,
+        "result": response, "session_id": sid, "total_cost_usd": 0.001}), flush=True)
+
+if __name__ == '__main__':
+    main()
 WRAPPER
     chmod +x "$CLAUDE_WRAPPER"
-    echo "  [OK] claude wrapper created: ~/.local/bin/claude → gemini --yolo"
+    echo "  [OK] claude→gemini bridge created: ~/.local/bin/claude"
 fi
 
 # -------------------------------------------------------------
