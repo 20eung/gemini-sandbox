@@ -108,12 +108,15 @@ echo "[4.5] Ensuring environment variables for services..."
 extract_from_bashrc() {
     local var_name=$1
     if [ -z "${!var_name}" ]; then
-        # .bashrc에서 export 변수="값" 형식 추출
-        local found=$(grep "export $var_name=" "$HOME/.bashrc" | head -1 | sed -E 's/.*="?([^"]*)"?/\1/')
+        # .bashrc에서 export 변수="값" 또는 export 변수=값 형식 추출
+        local found=$(grep -E "export $var_name=" "$HOME/.bashrc" | head -1 | sed -E "s/export $var_name=[\"']?([^\"']*)[\"']?/\1/")
         if [ -n "$found" ]; then
             export "$var_name"="$found"
             echo "  [OK] Extracted $var_name from ~/.bashrc"
         fi
+    fi
+    if [ -z "${!var_name}" ]; then
+         echo "  [DEBUG] $var_name is still missing (neither in env nor in .bashrc)"
     fi
 }
 
@@ -423,14 +426,23 @@ const https = require('https');
 const { execSync } = require('child_process');
 const fs = require('fs');
 
-if (!TOKEN) {
-    console.error("Error: TELEGRAM_BOT_TOKEN is not set.");
-    process.exit(1);
-}
-
 function log(msg) {
     const time = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '');
     console.log(`[${time}] ${msg}`);
+}
+
+process.on('uncaughtException', (err) => {
+    log(`FATAL: Uncaught Exception: ${err.message}`);
+    log(err.stack);
+    process.exit(1);
+});
+
+if (!TOKEN) {
+    log("CRITICAL: TELEGRAM_BOT_TOKEN is not set.");
+    process.exit(1);
+} else {
+    const masked = TOKEN.substring(0, 4) + '...' + TOKEN.substring(TOKEN.length - 4);
+    log(`Diagnostic: TOKEN detected (${masked})`);
 }
 
 let lastUpdateId = 0;
@@ -442,11 +454,16 @@ function poll() {
         let data = '';
         res.on('data', chunk => data += chunk);
         res.on('end', () => {
+            if (res.statusCode !== 200) {
+                log(`Polling Error: HTTP ${res.statusCode} - ${data}`);
+                setTimeout(poll, 10000);
+                return;
+            }
             try {
                 const json = JSON.parse(data);
                 if (json.ok && json.result.length > 0) {
                     json.result.forEach(update => {
-                        lastUpdateId = update.update_id;
+                        lastUpdateId = Math.max(lastUpdateId, update.update_id);
                         if (update.message && update.message.text) {
                             handleMessage(update.message);
                         }
@@ -458,7 +475,7 @@ function poll() {
             setTimeout(poll, 100);
         });
     }).on('error', (e) => {
-        log(`Polling Error: ${e.message}`);
+        log(`Network Error: ${e.message}`);
         setTimeout(poll, 5000);
     });
 }
@@ -498,9 +515,7 @@ function sendMessage(chatId, text) {
         }
     };
 
-    const req = https.request(options, (res) => {
-        res.on('data', () => {});
-    });
+    const req = https.request(options);
     req.on('error', (e) => log(`Send Error: ${e.message}`));
     req.write(payload);
     req.end();
