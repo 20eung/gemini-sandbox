@@ -392,18 +392,6 @@ else
     echo "  [SKIP] ~/.local/bin already in PATH"
 fi
 
-# -------------------------------------------------------------
-# [9.5] Node 심볼릭 링크 생성 (~/.local/bin/node)
-# -------------------------------------------------------------
-echo ""
-echo "[9.5] Creating node symlink for stable path..."
-mkdir -p "$HOME/.local/bin"
-# NVM Node 경로 감지 및 링크 생성
-NODE_ORIGIN=$(which node)
-if [ -n "$NODE_ORIGIN" ]; then
-    ln -sf "$NODE_ORIGIN" "$HOME/.local/bin/node"
-    echo "  [OK] Link created: $HOME/.local/bin/node -> $NODE_ORIGIN"
-fi
 
 # -------------------------------------------------------------
 # [10] 내장형 텔레그램 봇(Node.js) 생성
@@ -413,8 +401,7 @@ echo "[10] Creating built-in Telegram Bot for Gemini..."
 
 mkdir -p "$HOME/.local/bin"
 BOT_SCRIPT="$HOME/.local/bin/gemini-telegram-bot.js"
-# 고정된 심볼릭 링크 경로 사용
-NODE_BIN_PATH="$HOME/.local/bin/node"
+NODE_BIN_PATH=$(which node)
 GEMINI_BIN_PATH=$(which gemini)
 
 cat > "$BOT_SCRIPT" << EOF
@@ -588,6 +575,8 @@ EnvironmentFile=$ENV_FILE
 ExecStart=$NODE_BIN $BOT_SCRIPT
 Restart=always
 RestartSec=10
+# 로그 파일 권한 문제 방지를 위해 systemd 로그(journal) 활용 권장
+# 만약 파일로 보고 싶다면 아래 설정을 유지하되 touch/chown 필수
 StandardOutput=append:/tmp/${SERVICE_NAME}.log
 StandardError=append:/tmp/${SERVICE_NAME}.log
 
