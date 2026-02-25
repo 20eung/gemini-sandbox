@@ -490,16 +490,38 @@ function handleMessage(msg) {
     const user = msg.from ? msg.from.username || msg.from.first_name : 'Unknown';
 
     log(`Received from @${user}: ${text.substring(0, 50)}...`);
-
-    // 봇에게 로딩 중임을 알리는 Typing 액션
     sendChatAction(chatId, 'typing');
 
     try {
-        // bridge(claude) 호출
         const command = `echo ${JSON.stringify(text)} | ${CLAUDE_PATH}`;
-        const response = execSync(command, { encoding: 'utf8', timeout: 60000 });
-        
-        sendMessage(chatId, response.trim() || "(응답이 없습니다)");
+        const rawOutput = execSync(command, { encoding: 'utf8', timeout: 60000 });
+
+        // claude 브릿지는 JSON Lines 형식으로 출력 - result 필드 추출
+        let answer = null;
+        const lines = rawOutput.trim().split('\n');
+        for (const line of lines) {
+            try {
+                const parsed = JSON.parse(line);
+                if (parsed.type === 'result' && parsed.result) {
+                    answer = parsed.result;
+                    break;
+                }
+            } catch (_) {}
+        }
+        // fallback: assistant 메시지에서 text 추출
+        if (!answer) {
+            for (const line of lines) {
+                try {
+                    const parsed = JSON.parse(line);
+                    if (parsed.type === 'assistant' && parsed.message?.content) {
+                        const tc = parsed.message.content.find(c => c.type === 'text');
+                        if (tc) { answer = tc.text; break; }
+                    }
+                } catch (_) {}
+            }
+        }
+
+        sendMessage(chatId, answer?.trim() || "(응답이 없습니다)");
     } catch (e) {
         log(`Bridge Exec Error: ${e.message}`);
         sendMessage(chatId, "⚠️ AI 응답 생성 중 오류가 발생했습니다.");
