@@ -588,7 +588,13 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable ${SERVICE_NAME}.service
 
-# 기존 로그 파일 권한 문제 해결 (있을 경우 삭제 또는 권한 변경)
+# [!] 중복 프로세스 박멸: 기존에 돌고 있을지 모르는 수동 실행/유령 프로세스 정리
+echo "  [INFO] Cleaning up existing bot processes to prevent Conflict (409)..."
+# 서비스 자식 프로세스 외에 동일한 스크립트를 실행 중인 프로세스 종료
+PGID_TO_KEEP=$$
+ps aux | grep "$BOT_SCRIPT" | grep -v grep | awk '{print $2}' | xargs -r sudo kill -9 2>/dev/null || true
+
+# 기존 로그 파일 권한 문제 해결
 sudo rm -f /tmp/${SERVICE_NAME}.log
 sudo touch /tmp/${SERVICE_NAME}.log
 sudo chown $USER_NAME:$USER_NAME /tmp/${SERVICE_NAME}.log
