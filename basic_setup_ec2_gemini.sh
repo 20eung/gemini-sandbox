@@ -515,6 +515,30 @@ SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 USER_NAME=$(whoami)
 HOME_DIR=$HOME
 
+# NVM이 설치된 실제 Node 경로 감지
+# (이미 스크립트 상단에서 NVM을 source했으므로 which node가 가능함)
+NODE_BIN=$(which node)
+
+if [[ -z "$NODE_BIN" ]]; then
+    echo "  [ERROR] Node binary not found even after NVM setup. Manual check required."
+else
+    echo "  Detected Node binary: $NODE_BIN"
+fi
+
+# 래퍼 스크립트 생성 (NVM 환경 확실히 로드)
+BOT_RUNNER="$HOME_DIR/.local/bin/gemini-bot-runner.sh"
+cat > "$BOT_RUNNER" << RUNNER_EOF
+#!/bin/bash
+export HOME="$HOME_DIR"
+export NVM_DIR="\$HOME/.nvm"
+[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+nvm use 24 > /dev/null
+
+# 봇 실행
+exec "$NODE_BIN" "$BOT_SCRIPT"
+RUNNER_EOF
+chmod +x "$BOT_RUNNER"
+
 # systemd 유닛 파일 생성
 sudo bash -c "cat > $SERVICE_FILE" << EOF
 [Unit]
@@ -525,8 +549,8 @@ After=network.target
 Type=simple
 User=$USER_NAME
 WorkingDirectory=$HOME_DIR
-# bash -lc를 사용하여 NVM 및 TELEGRAM_BOT_TOKEN 등 환경변수 로드
-ExecStart=/bin/bash -lc 'node $BOT_SCRIPT'
+# 전역 환경변수(TELEGRAM_BOT_TOKEN 등) 유실 방지를 위해 ExecStart에서 스크립트 실행
+ExecStart=/bin/bash "$BOT_RUNNER"
 Restart=always
 RestartSec=10
 StandardOutput=append:/tmp/${SERVICE_NAME}.log
