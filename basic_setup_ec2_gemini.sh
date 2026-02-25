@@ -155,11 +155,18 @@ echo ""
 
 # 6-1. 시스템 의존성 설치 (Linux)
 if [[ "$OS" == "Linux" ]] && command -v apt-get &>/dev/null; then
-    echo "[6-1] Installing system dependencies..."
+    echo "[6-1] Installing system dependencies (Playwright)..."
     sudo apt-get update -qq
-    sudo apt-get install -y -qq libgbm1 libasound2t64 2>/dev/null \
-        || sudo apt-get install -y -qq libgbm1 libasound2 2>/dev/null \
-        || echo "  [WARN] Some packages failed — manual check required"
+    
+    # Ubuntu 24.04 (t64)와 이전 버전 대응을 위해 시도 후 실패 시 대체 패키지 설치
+    # 주요 누락 라이브러리 목록 (사용자 보고 기반)
+    PKGS_T64="libgbm1 libasound2t64 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libatspi2.0-0t64 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libcairo2 libpango-1.0-0"
+    PKGS_LEGACY="libgbm1 libasound2 libatk1.0-0 libatk-bridge2.0-0 libcups2 libatspi2.0-0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libcairo2 libpango-1.0-0"
+
+    sudo apt-get install -y -qq $PKGS_T64 2>/dev/null \
+        || sudo apt-get install -y -qq $PKGS_LEGACY 2>/dev/null \
+        || echo "  [WARN] Some browser dependencies failed to install — manual check (npx playwright install-deps) required"
+    
     echo "  [OK] System dependencies installed"
 else
     echo "[6-1] Skipping system dependencies (not Linux/apt)"
