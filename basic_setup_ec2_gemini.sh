@@ -323,7 +323,7 @@ def main():
     try:
         if not sys.stdin.isatty():
             user_msg = sys.stdin.read().strip()
-    except: pass
+    except Exception: pass
 
     log(f"user: {user_msg[:80]}")
     log(f"system(60): {system_prompt[:60]}")
@@ -339,7 +339,9 @@ def main():
 
     # Gemini 절대 경로 확인 (설정 시점의 경로 사용)
     GEMINI_BIN = os.environ.get('GEMINI_BIN_PATH', 'GEMINI_BIN_PLACEHOLDER')
-    
+
+    # [!] --yolo: 모든 도구 사용 자동 승인. 텔레그램 봇으로 외부 노출 시
+    #     임의 사용자가 파일 읽기/쓰기/명령 실행 가능 → 신뢰할 수 있는 사용자만 접근 허용 필수
     result = subprocess.run(
         [GEMINI_BIN, '--yolo', '--output-format', 'text', '-p', prompt],
         capture_output=True, text=True
@@ -426,7 +428,7 @@ EOF
 
 cat >> "$BOT_SCRIPT" << 'EOF'
 const https = require('https');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 
 function log(msg) {
@@ -516,8 +518,10 @@ function handleMessage(msg) {
     // 비동기로 실행하여 폴링을 차단하지 않음
     setImmediate(async () => {
         try {
-            const command = `echo ${JSON.stringify(text)} | ${CLAUDE_PATH}`;
-            const rawOutput = execSync(command, { encoding: 'utf8', timeout: 90000 });
+            // execFileSync + input 옵션으로 쉘을 경유하지 않아 명령 주입 방지
+            const rawOutput = execFileSync(CLAUDE_PATH, [], {
+                input: text, encoding: 'utf8', timeout: 90000
+            });
 
             let answer = null;
             const lines = rawOutput.trim().split('\n');

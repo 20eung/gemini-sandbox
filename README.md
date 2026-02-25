@@ -75,14 +75,17 @@ ssh -t -i "$PEM" ubuntu@$IP "bash -ic \"export GOOGLE_GENAI_USE_VERTEXAI='true' 
 
 ## 설치 구성 요소
 
-| 구성 요소                          | 역할                                  |
-| ---------------------------------- | ------------------------------------- |
-| 스왑 메모리 16GB                   | 소형 EC2 인스턴스 메모리 보완         |
-| cokacdir                           | `cd` 명령 개선 (마지막 디렉토리 기억) |
-| NVM v0.40.1 + Node.js 24           | Gemini CLI 실행 환경                  |
-| Gemini CLI (`@google/gemini-cli`)  | Google AI 코딩 어시스턴트             |
-| Playwright (`@playwright/cli`)     | 브라우저 자동화 엔진                  |
-| Playwright MCP (`@playwright/mcp`) | Gemini CLI 웹 탐색 연동               |
+| 구성 요소                          | 역할                                   |
+| ---------------------------------- | -------------------------------------- |
+| 스왑 메모리 16GB                   | 소형 EC2 인스턴스 메모리 보완          |
+| cokacdir                           | `cd` 명령 개선 (마지막 디렉토리 기억)  |
+| NVM v0.40.1 + Node.js 24           | Gemini CLI 실행 환경                   |
+| Gemini CLI (`@google/gemini-cli`)  | Google AI 코딩 어시스턴트              |
+| Playwright (`@playwright/cli`)     | 브라우저 자동화 엔진                   |
+| Playwright MCP (`@playwright/mcp`) | Gemini CLI 웹 탐색 연동                |
+| claude→gemini 브릿지               | cokacdir 호환 래퍼 (Claude CLI 에뮬레이션) |
+| 내장형 텔레그램 봇 (Node.js)       | 텔레그램 메시지를 Gemini CLI로 중계    |
+| systemd 서비스 (`gemini-bot`)      | 봇 상시 실행 및 재부팅 시 자동 시작    |
 
 ---
 
@@ -120,17 +123,21 @@ gemini
 
 ## 설치 단계 상세
 
-| 단계                 | 내용                                                             | 비고                              |
-| -------------------- | ---------------------------------------------------------------- | --------------------------------- |
-| [0] `.env` 로드      | 스크립트 위치 또는 홈 디렉토리에서 `.env` 자동 로드              | 없으면 env 변수 직접 사용         |
-| [1] 스왑 설정        | 16GB 스왑 파일 생성                                              | 이미 존재하면 건너뜀 (idempotent) |
-| [2] cokacdir         | `cd` 명령 개선 도구 설치                                         | 이미 설치되면 건너뜀              |
-| [3] NVM + Node.js 24 | NVM v0.40.1 설치 후 Node.js 24 활성화                            | 서브쉘 버그 수정됨                |
-| [4] Gemini CLI       | `npm install -g @google/gemini-cli`                              | 이미 설치되면 건너뜀              |
-| [5] API 키 등록      | `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`을 `~/.bashrc`에 영구 등록 | 중복 등록 방지                    |
-| [6] Playwright       | 아키텍처 감지 후 브라우저 설치                                   | x86_64→chrome, ARM→chromium       |
-| [7] Playwright MCP   | `@playwright/mcp` 설치 + `~/.gemini/settings.json` 생성          | Gemini CLI 웹 탐색 활성화         |
-| [8] PATH 확인        | `~/.local/bin`, NVM 경로 `.bashrc` 등록                          | 중복 방지                         |
+| 단계                    | 내용                                                             | 비고                              |
+| ----------------------- | ---------------------------------------------------------------- | --------------------------------- |
+| [0] `.env` 로드         | 스크립트 위치 또는 홈 디렉토리에서 `.env` 자동 로드              | 없으면 env 변수 직접 사용         |
+| [1] 스왑 설정           | 16GB 스왑 파일 생성                                              | 이미 존재하면 건너뜀 (idempotent) |
+| [2] cokacdir            | `cd` 명령 개선 도구 설치                                         | 이미 설치되면 건너뜀              |
+| [3] NVM + Node.js 24    | NVM v0.40.1 설치 후 Node.js 24 활성화                            | 서브쉘 버그 수정됨                |
+| [4] Gemini CLI          | `npm install -g @google/gemini-cli`                              | 이미 설치되면 건너뜀              |
+| [4.5] 환경변수 보정     | 현재 환경에 없는 변수를 `.bashrc`에서 추출                       | TELEGRAM_BOT_TOKEN, API 키 등     |
+| [5] API 키 등록         | `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`을 `~/.bashrc`에 영구 등록 | 중복 등록 방지                    |
+| [6] Playwright          | 아키텍처 감지 후 브라우저 설치                                   | x86_64→chrome, ARM→chromium       |
+| [7] Playwright MCP      | `@playwright/mcp` 설치 + `~/.gemini/settings.json` 생성         | Gemini CLI 웹 탐색 활성화         |
+| [8] claude→gemini 브릿지 | cokacdir 호환 Python 래퍼 생성 (`~/.local/bin/claude`)           | Claude CLI 인터페이스 에뮬레이션  |
+| [9] PATH 확인           | `~/.local/bin` 경로 `.bashrc` 등록                               | 중복 방지                         |
+| [10] 텔레그램 봇        | 내장형 Node.js 텔레그램 봇 생성                                  | Gemini CLI 응답을 텔레그램으로 전달 |
+| [11] systemd 서비스     | `gemini-bot.service` 등록 및 시작                                | 재부팅 시 자동 시작, 크래시 자동 복구 |
 
 ### 아키텍처별 브라우저
 
@@ -284,6 +291,14 @@ export GOOGLE_CLOUD_PROJECT="your-project-id"
 - **OS**: Ubuntu 20.04, 22.04, 24.04 LTS
 - **아키텍처**: x86_64 (AMD64), aarch64 (ARM64/Graviton)
 - **Node.js**: 24.x (NVM으로 자동 설치)
+
+---
+
+## 보안 고려 사항
+
+- **명령 주입 방지**: 텔레그램 봇은 사용자 입력을 `execFileSync`의 `input` 옵션으로 전달합니다. 쉘을 경유하지 않으므로 `$()`, 백틱 등을 통한 명령 주입이 차단됩니다.
+- **`--yolo` 모드 주의**: claude→gemini 브릿지는 `--yolo` 플래그로 Gemini CLI의 도구 사용을 자동 승인합니다. 텔레그램 봇이 외부에 노출되므로 **신뢰할 수 있는 사용자만 접근할 수 있도록** 봇 접근 제한을 설정하세요.
+- **환경변수 파일 보호**: systemd 환경변수 파일(`/etc/systemd/system/gemini-bot.env`)은 `chmod 600`으로 보호됩니다. API 키와 봇 토큰이 포함되어 있으므로 권한을 변경하지 마세요.
 
 ---
 
