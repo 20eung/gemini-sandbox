@@ -369,13 +369,17 @@ else
     echo "  [SKIP] ~/.local/bin already in PATH"
 fi
 
-# NVM PATH가 .bashrc에 없으면 추가
-if ! grep -q "NVM_DIR" "$HOME/.bashrc"; then
-    {
-        echo 'export NVM_DIR="$HOME/.nvm"'
-        echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"'
-    } >> "$HOME/.bashrc"
-    echo "  [OK] NVM init added to ~/.bashrc"
+# -------------------------------------------------------------
+# [9.5] Node 심볼릭 링크 생성 (~/.local/bin/node)
+# -------------------------------------------------------------
+echo ""
+echo "[9.5] Creating node symlink for stable path..."
+mkdir -p "$HOME/.local/bin"
+# NVM Node 경로 감지 및 링크 생성
+NODE_ORIGIN=$(which node)
+if [ -n "$NODE_ORIGIN" ]; then
+    ln -sf "$NODE_ORIGIN" "$HOME/.local/bin/node"
+    echo "  [OK] Link created: $HOME/.local/bin/node -> $NODE_ORIGIN"
 fi
 
 # -------------------------------------------------------------
@@ -386,7 +390,8 @@ echo "[10] Creating built-in Telegram Bot for Gemini..."
 
 mkdir -p "$HOME/.local/bin"
 BOT_SCRIPT="$HOME/.local/bin/gemini-telegram-bot.js"
-NODE_BIN_PATH=$(which node)
+# 고정된 심볼릭 링크 경로 사용
+NODE_BIN_PATH="$HOME/.local/bin/node"
 GEMINI_BIN_PATH=$(which gemini)
 
 cat > "$BOT_SCRIPT" << EOF
@@ -402,6 +407,7 @@ const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CLAUDE_PATH = path.join(process.env.HOME, '.local/bin/claude');
 const LOG_FILE = '/tmp/gemini-bot.log';
 const NODE_BIN_DIR = path.dirname("${NODE_BIN_PATH}");
+const NODE_EXECUTABLE = "${NODE_BIN_PATH}";
 
 // 시스템 PATH에 Node 바이너리 경로 추가 (execSync용)
 process.env.PATH = NODE_BIN_DIR + path.delimiter + process.env.PATH;
@@ -562,8 +568,9 @@ After=network.target
 Type=simple
 User=$USER_NAME
 WorkingDirectory=$HOME_DIR
-# 환경변수 상속을 위해 bash -lc 대신 명시적 래퍼 실행
-ExecStart=/bin/bash "$BOT_RUNNER"
+# 전역 환경변수(TELEGRAM_BOT_TOKEN 등) 유실 방지를 위해 ExecStart에서 스크립트 실행
+# 명시적으로 ~/.local/bin/node 사용
+ExecStart=/bin/bash -c '$HOME/.local/bin/node $BOT_SCRIPT'
 Restart=always
 RestartSec=10
 StandardOutput=append:/tmp/${SERVICE_NAME}.log
