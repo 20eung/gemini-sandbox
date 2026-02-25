@@ -22,12 +22,12 @@ export URL=https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/ma
 ssh -t -i "$PEM" ubuntu@$IP "bash -ic \"export GEMINI_API_KEY='$GEMINI_KEY' TELEGRAM_BOT_TOKEN='$TOKEN'; bash <(curl -sL $URL) && source ~/.bashrc && npx -y service-setup-cokacdir $TOKEN && gemini\""
 ```
 
-| 변수 | 설명 |
-|------|------|
-| `PEM` | EC2 접속용 PEM 키파일 경로 |
-| `IP` | EC2 인스턴스 공인 IP |
-| `GEMINI_KEY` | Google AI Studio 또는 GCP API 키 |
-| `TOKEN` | 텔레그램 봇 토큰 (`@BotFather`에서 발급) |
+| 변수         | 설명                                     |
+| ------------ | ---------------------------------------- |
+| `PEM`        | EC2 접속용 PEM 키파일 경로               |
+| `IP`         | EC2 인스턴스 공인 IP                     |
+| `GEMINI_KEY` | Google AI Studio 또는 GCP API 키         |
+| `TOKEN`      | 텔레그램 봇 토큰 (`@BotFather`에서 발급) |
 
 > Amazon Linux를 사용하는 경우 `ubuntu@$IP` → `ec2-user@$IP` 로 변경하세요.
 
@@ -49,11 +49,11 @@ ssh -t -i "$PEM" ubuntu@$IP "bash -ic \"export GEMINI_API_KEY='$GEMINI_KEY' TELE
 
 ## 준비물 3가지
 
-| # | 항목 | 설명 | 예시 |
-|---|------|------|------|
-| 1 | 🌐 **EC2 공인 IP** | AWS 콘솔에서 확인하는 EC2 인스턴스의 공인 IPv4 주소 | `13.124.xxx.xxx` |
-| 2 | 🔑 **PEM 키파일** | EC2 인스턴스 생성 시 다운로드한 `.pem` 키파일 | `my-key.pem` |
-| 3 | 📱 **텔레그램 봇 토큰** | `@BotFather`에서 발급한 봇 토큰 | `1234567890:AABBcc...` |
+| #   | 항목                    | 설명                                                | 예시                   |
+| --- | ----------------------- | --------------------------------------------------- | ---------------------- |
+| 1   | 🌐 **EC2 공인 IP**      | AWS 콘솔에서 확인하는 EC2 인스턴스의 공인 IPv4 주소 | `13.124.xxx.xxx`       |
+| 2   | 🔑 **PEM 키파일**       | EC2 인스턴스 생성 시 다운로드한 `.pem` 키파일       | `my-key.pem`           |
+| 3   | 📱 **텔레그램 봇 토큰** | `@BotFather`에서 발급한 봇 토큰                     | `1234567890:AABBcc...` |
 
 > **텔레그램 봇 토큰 발급**: 텔레그램 앱 → `@BotFather` 검색 → `/newbot` → 봇 이름 설정 → 토큰 발급
 
@@ -61,14 +61,14 @@ ssh -t -i "$PEM" ubuntu@$IP "bash -ic \"export GEMINI_API_KEY='$GEMINI_KEY' TELE
 
 ## 설치 구성 요소
 
-| 구성 요소 | 역할 |
-|-----------|------|
-| 스왑 메모리 16GB | 소형 EC2 인스턴스 메모리 보완 |
-| cokacdir | `cd` 명령 개선 (마지막 디렉토리 기억) |
-| NVM v0.40.1 + Node.js 24 | Gemini CLI 실행 환경 |
-| Gemini CLI (`@google/gemini-cli`) | Google AI 코딩 어시스턴트 |
-| Playwright (`@playwright/cli`) | 브라우저 자동화 엔진 |
-| Playwright MCP (`@playwright/mcp`) | Gemini CLI 웹 탐색 연동 |
+| 구성 요소                          | 역할                                  |
+| ---------------------------------- | ------------------------------------- |
+| 스왑 메모리 16GB                   | 소형 EC2 인스턴스 메모리 보완         |
+| cokacdir                           | `cd` 명령 개선 (마지막 디렉토리 기억) |
+| NVM v0.40.1 + Node.js 24           | Gemini CLI 실행 환경                  |
+| Gemini CLI (`@google/gemini-cli`)  | Google AI 코딩 어시스턴트             |
+| Playwright (`@playwright/cli`)     | 브라우저 자동화 엔진                  |
+| Playwright MCP (`@playwright/mcp`) | Gemini CLI 웹 탐색 연동               |
 
 ---
 
@@ -106,24 +106,24 @@ gemini
 
 ## 설치 단계 상세
 
-| 단계 | 내용 | 비고 |
-|------|------|------|
-| [0] `.env` 로드 | 스크립트 위치 또는 홈 디렉토리에서 `.env` 자동 로드 | 없으면 env 변수 직접 사용 |
-| [1] 스왑 설정 | 16GB 스왑 파일 생성 | 이미 존재하면 건너뜀 (idempotent) |
-| [2] cokacdir | `cd` 명령 개선 도구 설치 | 이미 설치되면 건너뜀 |
-| [3] NVM + Node.js 24 | NVM v0.40.1 설치 후 Node.js 24 활성화 | 서브쉘 버그 수정됨 |
-| [4] Gemini CLI | `npm install -g @google/gemini-cli` | 이미 설치되면 건너뜀 |
-| [5] API 키 등록 | `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`을 `~/.bashrc`에 영구 등록 | 중복 등록 방지 |
-| [6] Playwright | 아키텍처 감지 후 브라우저 설치 | x86_64→chrome, ARM→chromium |
-| [7] Playwright MCP | `@playwright/mcp` 설치 + `~/.gemini/settings.json` 생성 | Gemini CLI 웹 탐색 활성화 |
-| [8] PATH 확인 | `~/.local/bin`, NVM 경로 `.bashrc` 등록 | 중복 방지 |
+| 단계                 | 내용                                                             | 비고                              |
+| -------------------- | ---------------------------------------------------------------- | --------------------------------- |
+| [0] `.env` 로드      | 스크립트 위치 또는 홈 디렉토리에서 `.env` 자동 로드              | 없으면 env 변수 직접 사용         |
+| [1] 스왑 설정        | 16GB 스왑 파일 생성                                              | 이미 존재하면 건너뜀 (idempotent) |
+| [2] cokacdir         | `cd` 명령 개선 도구 설치                                         | 이미 설치되면 건너뜀              |
+| [3] NVM + Node.js 24 | NVM v0.40.1 설치 후 Node.js 24 활성화                            | 서브쉘 버그 수정됨                |
+| [4] Gemini CLI       | `npm install -g @google/gemini-cli`                              | 이미 설치되면 건너뜀              |
+| [5] API 키 등록      | `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`을 `~/.bashrc`에 영구 등록 | 중복 등록 방지                    |
+| [6] Playwright       | 아키텍처 감지 후 브라우저 설치                                   | x86_64→chrome, ARM→chromium       |
+| [7] Playwright MCP   | `@playwright/mcp` 설치 + `~/.gemini/settings.json` 생성          | Gemini CLI 웹 탐색 활성화         |
+| [8] PATH 확인        | `~/.local/bin`, NVM 경로 `.bashrc` 등록                          | 중복 방지                         |
 
 ### 아키텍처별 브라우저
 
-| 아키텍처 | 브라우저 채널 | 비고 |
-|----------|-------------|------|
-| `x86_64` / `amd64` | chrome | 일반 EC2 인스턴스 |
-| `aarch64` (ARM) | chromium | Graviton 인스턴스, symlink 자동 생성 |
+| 아키텍처           | 브라우저 채널 | 비고                                 |
+| ------------------ | ------------- | ------------------------------------ |
+| `x86_64` / `amd64` | chrome        | 일반 EC2 인스턴스                    |
+| `aarch64` (ARM)    | chromium      | Graviton 인스턴스, symlink 자동 생성 |
 
 ---
 
@@ -182,7 +182,7 @@ echo $TELEGRAM_BOT_TOKEN
 ### 3단계: 봇 연동 테스트
 
 1. 텔레그램 앱에서 생성한 봇 검색 → 대화 시작
-2. 메시지 전송: *"안녕, 오늘 날씨 어때?"*
+2. 메시지 전송: _"안녕, 오늘 날씨 어때?"_
 3. EC2의 Gemini CLI가 처리 후 답변 전송 확인
 4. Playwright MCP 활성화 시 웹 검색도 가능
 
@@ -218,12 +218,29 @@ Claude Code의 `CLAUDE.md`처럼, Gemini CLI는 `GEMINI.md` 파일을 프로젝�
 
 ## 인증 설정
 
+환경에 따라 **API 키 방식** 또는 **Vertex AI 방식** 중 하나를 선택하여 설정합니다.
+
+### 1. API 키 방식 (개인/일반 사용자 권장)
+
+Google AI Studio에서 발급받은 API 키를 사용합니다.
+
 ```bash
-# API 키 방식 (서버/headless 환경 권장)
-export GEMINI_API_KEY="your_gcp_api_key_here"
+# API 키 방식
+export GEMINI_API_KEY="your_api_key_here"
 ```
 
-> **OAuth 방식은 사용하지 마세요.** 서버 환경에 부적합합니다. 반드시 **API 키 방식**을 사용하세요.
+### 2. Vertex AI 방식 (Google Workspace / 기업용 사용자)
+
+GCP 프로젝트를 통해 Vertex AI API를 사용합니다.
+
+```bash
+# Vertex AI 방식
+export GOOGLE_GENAI_USE_VERTEXAI=true
+export GOOGLE_CLOUD_PROJECT="your-project-id"
+```
+
+> [!IMPORTANT]
+> **OAuth 방식은 사용하지 마세요.** 서버 환경에 부적합하며 세션이 만료될 수 있습니다. 반드시 위 두 방식 중 하나를 사용하세요.
 
 > **EC2 서버 사용 가능 여부**: Google Gemini API 이용약관상 API 키를 통한 서버 사용은 허용됩니다.
 
@@ -231,20 +248,20 @@ export GEMINI_API_KEY="your_gcp_api_key_here"
 
 ## Claude Code와 비교
 
-| 기능 | Claude Code (기존) | Gemini CLI (이 가이드) |
-|------|-------------------|----------------------|
-| AI 모델 | Claude (AWS Bedrock) | Gemini (GCP API) |
-| 인증 | AWS Bedrock IAM | GEMINI_API_KEY |
-| 파일 읽기/쓰기 | ✅ | ✅ |
-| 쉘 명령 실행 | ✅ | ✅ |
-| 웹 검색 | ✅ | ✅ (Google Search 내장) |
-| Playwright 브라우저 | 내장 | MCP 서버 (자동 설정) |
-| 컨텍스트 파일 | `CLAUDE.md` | `GEMINI.md` |
-| 설치 스크립트 | `basic_setup_ec2.sh` | `basic_setup_ec2_gemini.sh` |
-| 라이선스 | 상용 | Apache 2.0 (오픈소스) |
-| 설치 방식 | 원클릭 (로컬 실행) | 원클릭 (로컬 실행) |
-| NVM 버그 수정 | 미수정 | 수정됨 |
-| 스왑 중복 방지 | 미적용 | 적용됨 |
+| 기능                | Claude Code (기존)   | Gemini CLI (이 가이드)      |
+| ------------------- | -------------------- | --------------------------- |
+| AI 모델             | Claude (AWS Bedrock) | Gemini (GCP API)            |
+| 인증                | AWS Bedrock IAM      | GEMINI_API_KEY              |
+| 파일 읽기/쓰기      | ✅                   | ✅                          |
+| 쉘 명령 실행        | ✅                   | ✅                          |
+| 웹 검색             | ✅                   | ✅ (Google Search 내장)     |
+| Playwright 브라우저 | 내장                 | MCP 서버 (자동 설정)        |
+| 컨텍스트 파일       | `CLAUDE.md`          | `GEMINI.md`                 |
+| 설치 스크립트       | `basic_setup_ec2.sh` | `basic_setup_ec2_gemini.sh` |
+| 라이선스            | 상용                 | Apache 2.0 (오픈소스)       |
+| 설치 방식           | 원클릭 (로컬 실행)   | 원클릭 (로컬 실행)          |
+| NVM 버그 수정       | 미수정               | 수정됨                      |
+| 스왑 중복 방지      | 미적용               | 적용됨                      |
 
 ---
 
@@ -277,6 +294,7 @@ export GEMINI_API_KEY="your_gcp_api_key_here"
 설치 자체는 토큰 없이도 진행됩니다. 하지만 텔레그램을 통한 원격 AI 소통을 위해서는 봇 토큰이 필요합니다. `@BotFather`에서 무료로 발급 가능합니다.
 
 **Q. 텔레그램 봇이 응답하지 않을 경우 어떻게 하나요?**
+
 1. EC2 인스턴스가 실행 중인지 확인
 2. `TELEGRAM_BOT_TOKEN` 환경변수가 올바르게 설정되어 있는지 확인
 3. EC2 보안 그룹에서 아웃바운드 연결(HTTPS 443)이 허용되어 있는지 확인

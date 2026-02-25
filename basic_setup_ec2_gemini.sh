@@ -115,6 +115,10 @@ if [ -n "$GEMINI_API_KEY" ]; then
 else
     echo "  [WARN] GEMINI_API_KEY not set — add to ~/.bashrc manually:"
     echo "         export GEMINI_API_KEY=\"your_key_here\""
+    echo ""
+    echo "         또는 기업용 Vertex AI 사용 시:"
+    echo "         export GOOGLE_GENAI_USE_VERTEXAI=true"
+    echo "         export GOOGLE_CLOUD_PROJECT=\"your-project-id\""
 fi
 
 # TELEGRAM_BOT_TOKEN 영구 등록
@@ -360,10 +364,15 @@ echo "Next steps:"
 echo "  1. source ~/.bashrc   (환경변수 재로드)"
 echo "  2. gemini             (Gemini CLI 시작)"
 echo ""
-if [ -z "$GEMINI_API_KEY" ]; then
-    echo "  [!] GEMINI_API_KEY 설정 필요:"
-    echo "      echo 'export GEMINI_API_KEY=\"your_key\"' >> ~/.bashrc"
-    echo "      source ~/.bashrc"
+if [ -z "$GEMINI_API_KEY" ] && [ -z "$GOOGLE_CLOUD_PROJECT" ]; then
+    echo "  [!] 인증 설정 필요 (둘 중 하나):"
+    echo "      1. API 키 방식:"
+    echo "         echo 'export GEMINI_API_KEY=\"your_key\"' >> ~/.bashrc"
+    echo "      2. Vertex AI 방식 (기업용):"
+    echo "         echo 'export GOOGLE_GENAI_USE_VERTEXAI=true' >> ~/.bashrc"
+    echo "         echo 'export GOOGLE_CLOUD_PROJECT=\"your-project-id\"' >> ~/.bashrc"
+    echo ""
+    echo "      설정 후: source ~/.bashrc"
     echo ""
 fi
 echo "Installed:"
