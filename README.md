@@ -21,7 +21,7 @@ export IP=13.124.xxx.xxx
 export GEMINI_KEY=your_gemini_api_key_here
 export TOKEN=1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR
 export URL=https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/main/basic_setup_ec2_gemini.sh
-ssh -t -i "$PEM" ubuntu@$IP "bash -ic \"export GEMINI_API_KEY='$GEMINI_KEY' TELEGRAM_BOT_TOKEN='$TOKEN'; bash <(curl -sL $URL) && source ~/.bashrc && npx -y service-setup-cokacdir $TOKEN && gemini\""
+ssh -t -i "$PEM" ubuntu@$IP "bash -ic \"export GEMINI_API_KEY='$GEMINI_KEY' TELEGRAM_BOT_TOKEN='$TOKEN'; bash <(curl -sL $URL) && source ~/.bashrc && gemini\""
 ```
 
 ### 옵션 2: 기업용 사용자 (Vertex AI 방식)
@@ -32,7 +32,7 @@ export IP=13.124.xxx.xxx
 export PROJECT_ID=your-gcp-project-id
 export TOKEN=1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR
 export URL=https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/main/basic_setup_ec2_gemini.sh
-ssh -t -i "$PEM" ubuntu@$IP "bash -ic \"export GOOGLE_GENAI_USE_VERTEXAI='true' GOOGLE_CLOUD_PROJECT='$PROJECT_ID' TELEGRAM_BOT_TOKEN='$TOKEN'; bash <(curl -sL $URL) && source ~/.bashrc && npx -y service-setup-cokacdir $TOKEN && gemini\""
+ssh -t -i "$PEM" ubuntu@$IP "bash -ic \"export GOOGLE_GENAI_USE_VERTEXAI='true' GOOGLE_CLOUD_PROJECT='$PROJECT_ID' TELEGRAM_BOT_TOKEN='$TOKEN'; bash <(curl -sL $URL) && source ~/.bashrc && gemini\""
 ```
 
 | 변수         | 설명                                           |
@@ -112,10 +112,7 @@ chmod +x basic_setup_ec2_gemini.sh
 # 5. 환경변수 재로드
 source ~/.bashrc
 
-# 6. 텔레그램 봇 연동
-npx -y service-setup-cokacdir $TELEGRAM_BOT_TOKEN
-
-# 7. Gemini CLI 시작
+# 6. Gemini CLI 시작 (텔레그램 봇은 systemd 서비스로 자동 실행됨)
 gemini
 ```
 
