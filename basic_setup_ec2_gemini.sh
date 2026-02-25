@@ -420,7 +420,7 @@ function log(msg) {
 }
 
 process.on('uncaughtException', (err) => {
-    log(`FATAL: Uncaught Exception: \${err.message || err}`);
+    log(`FATAL: Uncaught Exception: ${err.message || err}`);
     if (err.stack) log(err.stack);
     process.exit(1);
 });
@@ -430,7 +430,7 @@ if (!TOKEN) {
     process.exit(1);
 } else {
     const masked = TOKEN.substring(0, 4) + '...' + TOKEN.substring(TOKEN.length - 4);
-    log(`Diagnostic: TOKEN detected (\${masked})`);
+    log(`Diagnostic: TOKEN detected (${masked})`);
 }
 
 let lastUpdateId = 0;
@@ -438,15 +438,15 @@ let lastUpdateId = 0;
 // 웹훅 삭제 후 폴링 시작 (Conflict 해결용)
 function init() {
     log("Cleaning up webhook status to prevent 409 Conflict...");
-    https.get(`https://api.telegram.org/bot\${TOKEN}/deleteWebhook`, (res) => {
+    https.get(`https://api.telegram.org/bot${TOKEN}/deleteWebhook`, (res) => {
         let data = '';
         res.on('data', chunk => data += chunk);
         res.on('end', () => {
-            log(`Webhook cleanup result: \${data}`);
+            log(`Webhook cleanup result: ${data}`);
             poll();
         });
     }).on('error', (e) => {
-        log(`Webhook cleanup error: \${e.message}`);
+        log(`Webhook cleanup error: ${e.message}`);
         poll();
     });
 }
