@@ -338,7 +338,7 @@ def main():
         prompt = 'Hello'
 
     # Gemini 절대 경로 확인 (설정 시점의 경로 사용)
-    GEMINI_BIN = os.environ.get('GEMINI_BIN_PATH', 'gemini')
+    GEMINI_BIN = os.environ.get('GEMINI_BIN_PATH', 'GEMINI_BIN_PLACEHOLDER')
     
     result = subprocess.run(
         [GEMINI_BIN, '--yolo', '--output-format', 'text', '-p', prompt],
@@ -379,6 +379,9 @@ def main():
 if __name__ == '__main__':
     main()
 WRAPPER
+    # 실제 경로 주입 (Heredoc 내 이스케이프 방지용)
+    REAL_GEMINI_PATH=$(which gemini 2>/dev/null || echo 'gemini')
+    sed -i "s|GEMINI_BIN_PLACEHOLDER|$REAL_GEMINI_PATH|" "$CLAUDE_WRAPPER"
     chmod +x "$CLAUDE_WRAPPER"
     echo "  [OK] claude→gemini bridge created: ~/.local/bin/claude"
 fi
@@ -610,9 +613,9 @@ ENV_FILE="/etc/systemd/system/${SERVICE_NAME}.env"
 USER_NAME=$(whoami)
 HOME_DIR=$HOME
 
-# 실제 바이너리 절대 경로 감지 (심볼릭 링크 대신 실제 경로 사용 추천)
-NODE_BIN=$(which node)
-GEMINI_BIN=$(which gemini)
+# 실제 바이너리 절대 경로 감지 (심볼릭 링크 해결)
+NODE_BIN=$(readlink -f $(which node))
+GEMINI_BIN=$(readlink -f $(which gemini))
 
 if [ -z "$NODE_BIN" ]; then
     echo "  [ERROR] Node binary not found! Please check NVM status."
@@ -620,6 +623,7 @@ if [ -z "$NODE_BIN" ]; then
 fi
 
 # 환경변수 파일 생성 (모든 토큰 확실히 주입)
+# PATH에는 실제 NVM 바이너리 경로가 포함되어야 함
 sudo bash -c "cat > $ENV_FILE" << ENV_EOF
 TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
 GEMINI_API_KEY=$GEMINI_API_KEY
