@@ -374,29 +374,34 @@ fi
 echo ""
 echo "[10] Setting up systemd service for Gemini Telegram Bot..."
 
-SERVICE_FILE="/etc/systemd/system/gemini-bot.service"
+# 서비스 명칭 정의
+SERVICE_NAME="gemini-bot"
+SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 USER_NAME=$(whoami)
-NODE_PATH=$(which node)
-NVM_SH="$HOME/.nvm/nvm.sh"
+HOME_DIR=$HOME
 
-# NVM 환경에서 Node 경로를 확실히 잡기 위한 래퍼 스크립트 생성
-mkdir -p "$HOME/.local/bin"
-BOT_RUNNER="$HOME/.local/bin/gemini-bot-runner.sh"
+# 래퍼 스크립트 생성 (NVM 환경 및 텔레그램 토큰 보장)
+mkdir -p "$HOME_DIR/.local/bin"
+BOT_RUNNER="$HOME_DIR/.local/bin/gemini-bot-runner.sh"
 
 cat > "$BOT_RUNNER" << RUNNER
 #!/bin/bash
+# 1. 환경변수 로드
+export HOME="$HOME_DIR"
 export NVM_DIR="\$HOME/.nvm"
 [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+
+# 2. Node 버전 고정
 nvm use 24 > /dev/null
 
-# 텔레그램 봇을 실행하는 명령
-# service-setup-cokacdir가 실제로 어떤 명령으로 봇을 띄우는지 확인이 필요하나,
-# 일반적인 gemini 기반 봇인 경우 아래와 같이 실행 가능
-# 여기서는 사용자가 명시한 gemini 실행을 유지
-gemini --yolo
+# 3. 텔레그램 봇 실행
+# gemini-cli는 --yolo 플래그로 비대화형 환경에서 도구 승인 가능
+# background 실행을 위해 --output-format stream-json 또는 기본 실행
+exec gemini --yolo
 RUNNER
 chmod +x "$BOT_RUNNER"
 
+# systemd 유닛 파일 생성
 sudo bash -c "cat > $SERVICE_FILE" << EOF
 [Unit]
 Description=Gemini CLI Telegram Bot Service
@@ -405,24 +410,26 @@ After=network.target
 [Service]
 Type=simple
 User=$USER_NAME
-EnvironmentFile=$HOME/.bashrc
-# EnvironmentFile은 단순 KEY=VALUE만 지원하여 bashrc를 바로 쓰기 어려울 수 있음
-# 따라서 ExecStart에서 bash -lc를 통해 환경변수를 로드함
+WorkingDirectory=$HOME_DIR
+# bash -lc를 사용하여 전역 환경변수(TELEGRAM_BOT_TOKEN 등)를 로드
 ExecStart=/bin/bash -lc '$BOT_RUNNER'
 Restart=always
 RestartSec=10
-StandardOutput=append:/tmp/gemini-bot.log
-StandardError=append:/tmp/gemini-bot.log
+# 로그 파일 설정
+StandardOutput=append:/tmp/${SERVICE_NAME}.log
+StandardError=append:/tmp/${SERVICE_NAME}.log
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
+# 서비스 활성화
 sudo systemctl daemon-reload
-sudo systemctl enable gemini-bot.service
-sudo systemctl start gemini-bot.service
+sudo systemctl enable ${SERVICE_NAME}.service
+sudo systemctl restart ${SERVICE_NAME}.service
 
-echo "  [OK] gemini-bot.service registered and started"
+echo "  [OK] ${SERVICE_NAME}.service registered, enabled, and started"
+echo "  [TIP] Check logs with: tail -f /tmp/${SERVICE_NAME}.log"
 
 # -------------------------------------------------------------
 # 완료
