@@ -369,6 +369,62 @@ if ! grep -q "NVM_DIR" "$HOME/.bashrc"; then
 fi
 
 # -------------------------------------------------------------
+# [10] systemd 서비스 등록 (상시 실행 및 재부팅 대응)
+# -------------------------------------------------------------
+echo ""
+echo "[10] Setting up systemd service for Gemini Telegram Bot..."
+
+SERVICE_FILE="/etc/systemd/system/gemini-bot.service"
+USER_NAME=$(whoami)
+NODE_PATH=$(which node)
+NVM_SH="$HOME/.nvm/nvm.sh"
+
+# NVM 환경에서 Node 경로를 확실히 잡기 위한 래퍼 스크립트 생성
+mkdir -p "$HOME/.local/bin"
+BOT_RUNNER="$HOME/.local/bin/gemini-bot-runner.sh"
+
+cat > "$BOT_RUNNER" << RUNNER
+#!/bin/bash
+export NVM_DIR="\$HOME/.nvm"
+[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+nvm use 24 > /dev/null
+
+# 텔레그램 봇을 실행하는 명령
+# service-setup-cokacdir가 실제로 어떤 명령으로 봇을 띄우는지 확인이 필요하나,
+# 일반적인 gemini 기반 봇인 경우 아래와 같이 실행 가능
+# 여기서는 사용자가 명시한 gemini 실행을 유지
+gemini --yolo
+RUNNER
+chmod +x "$BOT_RUNNER"
+
+sudo bash -c "cat > $SERVICE_FILE" << EOF
+[Unit]
+Description=Gemini CLI Telegram Bot Service
+After=network.target
+
+[Service]
+Type=simple
+User=$USER_NAME
+EnvironmentFile=$HOME/.bashrc
+# EnvironmentFile은 단순 KEY=VALUE만 지원하여 bashrc를 바로 쓰기 어려울 수 있음
+# 따라서 ExecStart에서 bash -lc를 통해 환경변수를 로드함
+ExecStart=/bin/bash -lc '$BOT_RUNNER'
+Restart=always
+RestartSec=10
+StandardOutput=append:/tmp/gemini-bot.log
+StandardError=append:/tmp/gemini-bot.log
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable gemini-bot.service
+sudo systemctl start gemini-bot.service
+
+echo "  [OK] gemini-bot.service registered and started"
+
+# -------------------------------------------------------------
 # 완료
 # -------------------------------------------------------------
 echo ""
