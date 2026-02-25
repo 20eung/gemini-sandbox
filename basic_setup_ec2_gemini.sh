@@ -420,8 +420,8 @@ function log(msg) {
 }
 
 process.on('uncaughtException', (err) => {
-    log(`FATAL: Uncaught Exception: ${err.message}`);
-    log(err.stack);
+    log(`FATAL: Uncaught Exception: \${err.message || err}`);
+    if (err.stack) log(err.stack);
     process.exit(1);
 });
 
@@ -430,10 +430,26 @@ if (!TOKEN) {
     process.exit(1);
 } else {
     const masked = TOKEN.substring(0, 4) + '...' + TOKEN.substring(TOKEN.length - 4);
-    log(`Diagnostic: TOKEN detected (${masked})`);
+    log(`Diagnostic: TOKEN detected (\${masked})`);
 }
 
 let lastUpdateId = 0;
+
+// 웹훅 삭제 후 폴링 시작 (Conflict 해결용)
+function init() {
+    log("Cleaning up webhook status to prevent 409 Conflict...");
+    https.get(`https://api.telegram.org/bot\${TOKEN}/deleteWebhook`, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+            log(`Webhook cleanup result: \${data}`);
+            poll();
+        });
+    }).on('error', (e) => {
+        log(`Webhook cleanup error: \${e.message}`);
+        poll();
+    });
+}
 
 function poll() {
     const url = `https://api.telegram.org/bot${TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=30`;
@@ -527,7 +543,7 @@ function sendChatAction(chatId, action) {
 }
 
 log("Gemini Telegram Bot Started...");
-poll();
+init();
 EOF
 
 # -------------------------------------------------------------
@@ -588,13 +604,16 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable ${SERVICE_NAME}.service
 
-# [!] 중복 프로세스 박멸: 기존에 돌고 있을지 모르는 수동 실행/유령 프로세스 정리
-echo "  [INFO] Cleaning up existing bot processes to prevent Conflict (409)..."
-# 서비스 자식 프로세스 외에 동일한 스크립트를 실행 중인 프로세스 종료
-PGID_TO_KEEP=$$
-ps aux | grep "$BOT_SCRIPT" | grep -v grep | awk '{print $2}' | xargs -r sudo kill -9 2>/dev/null || true
+# [!] 중복 프로세스/웹훅 충돌 박멸: 409 에러 방지용 강제 정리
+echo "  [INFO] Aggressively cleaning up redundant processes to resolve 409 Conflict..."
+# 기존 서비스 중지 및 봇 관련 모든 node 프로세스 종료
+sudo systemctl stop gemini-bot.service 2>/dev/null || true
+# 같은 스크립트명을 포함한 모든 프로세스 강제 종료
+sudo pkill -9 -f "$BOT_SCRIPT" 2>/dev/null || true
+# 혹시 모를 대체 앱 네이밍들 정리
+sudo pkill -9 -f "gemini-telegram-bot" 2>/dev/null || true
 
-# 기존 로그 파일 권한 문제 해결
+# 기존 로그 파일 초기화
 sudo rm -f /tmp/${SERVICE_NAME}.log
 sudo touch /tmp/${SERVICE_NAME}.log
 sudo chown $USER_NAME:$USER_NAME /tmp/${SERVICE_NAME}.log
