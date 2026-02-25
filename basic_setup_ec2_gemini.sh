@@ -528,36 +528,33 @@ echo "[11] Setting up systemd service for Gemini Telegram Bot..."
 
 SERVICE_NAME="gemini-bot"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
+ENV_FILE="/etc/systemd/system/${SERVICE_NAME}.env"
 USER_NAME=$(whoami)
 HOME_DIR=$HOME
 
 # NVM이 설치된 실제 Node 경로 감지
+# (이미 스크립트 상단에서 NVM을 source했으므로 which node가 가능함)
 NODE_BIN=$(which node)
-
 if [[ -z "$NODE_BIN" ]]; then
-    echo "  [ERROR] Node binary not found even after NVM setup. Manual check required."
-else
-    echo "  Detected Node binary: $NODE_BIN"
+    NODE_BIN="$HOME/.local/bin/node" # 차선책: 아까 만든 링크 시도
 fi
+echo "  [INFO] Using Node binary: $NODE_BIN"
 
-# 래퍼 스크립트 생성 (NVM 환경 및 PATH 보장)
-BOT_RUNNER="$HOME_DIR/.local/bin/gemini-bot-runner.sh"
-cat > "$BOT_RUNNER" << RUNNER_EOF
-#!/bin/bash
-export HOME="$HOME_DIR"
-export NVM_DIR="\$HOME/.nvm"
-[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
-nvm use 24 > /dev/null
-
-# PATH 보장
-export PATH="\$HOME/.local/bin:\$PATH"
-
-# 봇 실행
-exec "$NODE_BIN" "$BOT_SCRIPT"
-RUNNER_EOF
-chmod +x "$BOT_RUNNER"
+# 환경변수 파일 생성 (현재 쉘 환경의 토큰 보존)
+sudo bash -c "cat > $ENV_FILE" << ENV_EOF
+TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
+GEMINI_API_KEY=$GEMINI_API_KEY
+GOOGLE_GENAI_USE_VERTEXAI=$GOOGLE_GENAI_USE_VERTEXAI
+GOOGLE_CLOUD_PROJECT=$GOOGLE_CLOUD_PROJECT
+# 가교(Bridge)에서 사용할 Gemini 경로 주입
+GEMINI_BIN_PATH=$(which gemini)
+PATH=$(dirname "$NODE_BIN"):$HOME/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+HOME=$HOME_DIR
+ENV_EOF
+sudo chmod 600 "$ENV_FILE"
 
 # systemd 유닛 파일 생성
+# ($HOME 및 $BOT_SCRIPT 변수를 이 설치 스크립트 실행 시점에 확장하여 절대 경로로 기입)
 sudo bash -c "cat > $SERVICE_FILE" << EOF
 [Unit]
 Description=Gemini CLI Telegram Bot Service
@@ -567,9 +564,10 @@ After=network.target
 Type=simple
 User=$USER_NAME
 WorkingDirectory=$HOME_DIR
-# 전역 환경변수(TELEGRAM_BOT_TOKEN 등) 유실 방지를 위해 ExecStart에서 스크립트 실행
-# 명시적으로 ~/.local/bin/node 사용
-ExecStart=/bin/bash -c '$HOME/.local/bin/node $BOT_SCRIPT'
+# 환경변수 로딩
+EnvironmentFile=$ENV_FILE
+# 절대 경로로 직접 실행
+ExecStart=$NODE_BIN $BOT_SCRIPT
 Restart=always
 RestartSec=10
 StandardOutput=append:/tmp/${SERVICE_NAME}.log
