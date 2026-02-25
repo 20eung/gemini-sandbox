@@ -423,7 +423,6 @@ cat > "$BOT_SCRIPT" << EOF
  */
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CLAUDE_PATH = require('path').join(process.env.HOME, '.local/bin/claude');
-const LOG_FILE = '/tmp/gemini-bot.log';
 const NODE_BIN_DIR = require('path').dirname("${NODE_BIN_PATH}");
 
 // 시스템 PATH에 Node 바이너리 경로 추가 (execSync용)
@@ -444,9 +443,7 @@ if (!TOKEN) {
 
 function log(msg) {
     const time = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '');
-    const entry = `[${time}] ${msg}\n`;
-    fs.appendFileSync(LOG_FILE, entry);
-    console.log(msg);
+    console.log(`[${time}] ${msg}`);
 }
 
 let lastUpdateId = 0;
@@ -601,6 +598,12 @@ EOF
 # 서비스 활성화 및 시작
 sudo systemctl daemon-reload
 sudo systemctl enable ${SERVICE_NAME}.service
+
+# 기존 로그 파일 권한 문제 해결 (있을 경우 삭제 또는 권한 변경)
+sudo rm -f /tmp/${SERVICE_NAME}.log
+sudo touch /tmp/${SERVICE_NAME}.log
+sudo chown $USER_NAME:$USER_NAME /tmp/${SERVICE_NAME}.log
+
 sudo systemctl restart ${SERVICE_NAME}.service
 
 echo "  [OK] ${SERVICE_NAME}.service registered and started"
