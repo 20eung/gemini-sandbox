@@ -384,18 +384,6 @@ WRAPPER
 fi
 
 # -------------------------------------------------------------
-# [9] PATH 설정 확인
-# -------------------------------------------------------------
-echo ""
-echo "[9] Checking PATH..."
-if ! echo "$PATH" | grep -q "$HOME/.local/bin"; then
-    echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
-    echo "  [OK] ~/.local/bin added to PATH"
-else
-    echo "  [SKIP] ~/.local/bin already in PATH"
-fi
-
-
 # -------------------------------------------------------------
 # [10] 내장형 텔레그램 봇(Node.js) 생성
 # -------------------------------------------------------------
@@ -576,6 +564,7 @@ ENV_EOF
 sudo chmod 600 "$ENV_FILE"
 
 # systemd 유닛 파일 생성
+# [!] 209/STDOUT 에러 방지를 위해 StandardOutput 대신 bash 리다이렉션 사용
 sudo bash -c "cat > $SERVICE_FILE" << EOF
 [Unit]
 Description=Gemini CLI Telegram Bot Service
@@ -586,14 +575,10 @@ Type=simple
 User=$USER_NAME
 WorkingDirectory=$HOME_DIR
 EnvironmentFile=$ENV_FILE
-# 바이너리와 스크립트 모두 절대 경로로 기입
-ExecStart=$NODE_BIN $BOT_SCRIPT
+# 쉘 리다이렉션을 통해 가장 안전하게 로그 기록
+ExecStart=/bin/bash -c '$NODE_BIN $BOT_SCRIPT >> /tmp/${SERVICE_NAME}.log 2>&1'
 Restart=always
 RestartSec=10
-# 로그 파일 권한 문제 방지를 위해 systemd 로그(journal) 활용 권장
-# 만약 파일로 보고 싶다면 아래 설정을 유지하되 touch/chown 필수
-StandardOutput=append:/tmp/${SERVICE_NAME}.log
-StandardError=append:/tmp/${SERVICE_NAME}.log
 
 [Install]
 WantedBy=multi-user.target
