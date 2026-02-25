@@ -385,6 +385,18 @@ fi
 
 # -------------------------------------------------------------
 # -------------------------------------------------------------
+# [9] PATH 설정 확인
+# -------------------------------------------------------------
+echo ""
+echo "[9] Checking PATH..."
+if ! echo "$PATH" | grep -q "$HOME/.local/bin"; then
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+    echo "  [OK] ~/.local/bin added to PATH"
+else
+    echo "  [SKIP] ~/.local/bin already in PATH"
+fi
+
+# -------------------------------------------------------------
 # [10] 내장형 텔레그램 봇(Node.js) 생성
 # -------------------------------------------------------------
 echo ""
@@ -626,14 +638,21 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable ${SERVICE_NAME}.service
 
-# [!] 중복 프로세스/웹훅 충돌 박멸: 409 에러 방지용 강제 정리
-echo "  [INFO] Aggressively cleaning up redundant processes to resolve 409 Conflict..."
-# 기존 서비스 중지 및 봇 관련 모든 node 프로세스 종료
+# 기존 서비스 전면 중지 (cokacdir 및 gemini-bot 모두)
+echo "  [INFO] Stopping any existing bot services..."
 sudo systemctl stop gemini-bot.service 2>/dev/null || true
-# 같은 스크립트명을 포함한 모든 프로세스 강제 종료
-sudo pkill -9 -f "$BOT_SCRIPT" 2>/dev/null || true
-# 혹시 모를 대체 앱 네이밍들 정리
-sudo pkill -9 -f "gemini-telegram-bot" 2>/dev/null || true
+# user-level cokacdir 서비스 중지 (409 충돌 방지)
+systemctl --user stop cokacdir.service 2>/dev/null || true
+# 잘못 매칭을 피하기 위해 node로 실행 중인 봇 스크립트 프로세스만 표적
+# 설치 스크립트 자체는 매칭되지 않도록 엄격한 패턴 사용
+BOT_SCRIPT_NAME=$(basename "$BOT_SCRIPT")
+for PID in $(pgrep -f "node.*$BOT_SCRIPT_NAME" 2>/dev/null); do
+    # 설치 스크립트 프로세스 제외
+    if [ "$PID" != "$$" ] && [ "$PID" != "$PPID" ]; then
+        sudo kill -9 "$PID" 2>/dev/null || true
+    fi
+done
+echo "  [INFO] Cleanup done. Starting fresh..."
 
 # 기존 로그 파일 초기화
 sudo rm -f /tmp/${SERVICE_NAME}.log
