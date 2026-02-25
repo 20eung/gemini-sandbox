@@ -311,8 +311,11 @@ def main():
     else:
         prompt = 'Hello'
 
+    # Gemini 절대 경로 확인 (설정 시점의 경로 사용)
+    GEMINI_BIN = os.environ.get('GEMINI_BIN_PATH', 'gemini')
+    
     result = subprocess.run(
-        ['gemini', '--yolo', '--output-format', 'text', '-p', prompt],
+        [GEMINI_BIN, '--yolo', '--output-format', 'text', '-p', prompt],
         capture_output=True, text=True
     )
     log(f"exit:{result.returncode} stdout:{result.stdout[:80]}")
@@ -383,8 +386,10 @@ echo "[10] Creating built-in Telegram Bot for Gemini..."
 
 mkdir -p "$HOME/.local/bin"
 BOT_SCRIPT="$HOME/.local/bin/gemini-telegram-bot.js"
+NODE_BIN_PATH=$(which node)
+GEMINI_BIN_PATH=$(which gemini)
 
-cat > "$BOT_SCRIPT" << 'EOF'
+cat > "$BOT_SCRIPT" << EOF
 /**
  * Built-in Gemini Telegram Bot (No external dependencies)
  */
@@ -396,6 +401,12 @@ const path = require('path');
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CLAUDE_PATH = path.join(process.env.HOME, '.local/bin/claude');
 const LOG_FILE = '/tmp/gemini-bot.log';
+const NODE_BIN_DIR = path.dirname("${NODE_BIN_PATH}");
+
+// 시스템 PATH에 Node 바이너리 경로 추가 (execSync용)
+process.env.PATH = NODE_BIN_DIR + path.delimiter + process.env.PATH;
+// 가교(Bridge)에서 사용할 Gemini 경로 전달
+process.env.GEMINI_BIN_PATH = "${GEMINI_BIN_PATH}";
 
 if (!TOKEN) {
     console.error("Error: TELEGRAM_BOT_TOKEN is not set.");
@@ -516,7 +527,6 @@ USER_NAME=$(whoami)
 HOME_DIR=$HOME
 
 # NVM이 설치된 실제 Node 경로 감지
-# (이미 스크립트 상단에서 NVM을 source했으므로 which node가 가능함)
 NODE_BIN=$(which node)
 
 if [[ -z "$NODE_BIN" ]]; then
@@ -525,7 +535,7 @@ else
     echo "  Detected Node binary: $NODE_BIN"
 fi
 
-# 래퍼 스크립트 생성 (NVM 환경 확실히 로드)
+# 래퍼 스크립트 생성 (NVM 환경 및 PATH 보장)
 BOT_RUNNER="$HOME_DIR/.local/bin/gemini-bot-runner.sh"
 cat > "$BOT_RUNNER" << RUNNER_EOF
 #!/bin/bash
@@ -533,6 +543,9 @@ export HOME="$HOME_DIR"
 export NVM_DIR="\$HOME/.nvm"
 [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
 nvm use 24 > /dev/null
+
+# PATH 보장
+export PATH="\$HOME/.local/bin:\$PATH"
 
 # 봇 실행
 exec "$NODE_BIN" "$BOT_SCRIPT"
@@ -549,7 +562,7 @@ After=network.target
 Type=simple
 User=$USER_NAME
 WorkingDirectory=$HOME_DIR
-# 전역 환경변수(TELEGRAM_BOT_TOKEN 등) 유실 방지를 위해 ExecStart에서 스크립트 실행
+# 환경변수 상속을 위해 bash -lc 대신 명시적 래퍼 실행
 ExecStart=/bin/bash "$BOT_RUNNER"
 Restart=always
 RestartSec=10
