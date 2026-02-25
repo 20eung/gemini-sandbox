@@ -11,7 +11,9 @@
 
 ## 원클릭 설치 (로컬에서 실행)
 
-> 아래 변수 4개를 설정하고 마지막 줄을 실행하면 EC2에 자동으로 설치됩니다.
+> 아래 변수들을 설정하고 환경에 맞는 명령어를 실행하면 EC2에 자동으로 설치됩니다.
+
+### 옵션 1: 개인/일반 사용자 (API 키 방식)
 
 ```bash
 export PEM=~/Downloads/my-key.pem
@@ -22,12 +24,24 @@ export URL=https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/ma
 ssh -t -i "$PEM" ubuntu@$IP "bash -ic \"export GEMINI_API_KEY='$GEMINI_KEY' TELEGRAM_BOT_TOKEN='$TOKEN'; bash <(curl -sL $URL) && source ~/.bashrc && npx -y service-setup-cokacdir $TOKEN && gemini\""
 ```
 
-| 변수         | 설명                                     |
-| ------------ | ---------------------------------------- |
-| `PEM`        | EC2 접속용 PEM 키파일 경로               |
-| `IP`         | EC2 인스턴스 공인 IP                     |
-| `GEMINI_KEY` | Google AI Studio 또는 GCP API 키         |
-| `TOKEN`      | 텔레그램 봇 토큰 (`@BotFather`에서 발급) |
+### 옵션 2: 기업용 사용자 (Vertex AI 방식)
+
+```bash
+export PEM=~/Downloads/my-key.pem
+export IP=13.124.xxx.xxx
+export PROJECT_ID=your-gcp-project-id
+export TOKEN=1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR
+export URL=https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/main/basic_setup_ec2_gemini.sh
+ssh -t -i "$PEM" ubuntu@$IP "bash -ic \"export GOOGLE_GENAI_USE_VERTEXAI='true' GOOGLE_CLOUD_PROJECT='$PROJECT_ID' TELEGRAM_BOT_TOKEN='$TOKEN'; bash <(curl -sL $URL) && source ~/.bashrc && npx -y service-setup-cokacdir $TOKEN && gemini\""
+```
+
+| 변수         | 설명                                           |
+| ------------ | ---------------------------------------------- |
+| `PEM`        | EC2 접속용 PEM 키파일 경로                     |
+| `IP`         | EC2 인스턴스 공인 IP                           |
+| `GEMINI_KEY` | (옵션 1 전용) Google AI Studio 또는 GCP API 키 |
+| `PROJECT_ID` | (옵션 2 전용) GCP 프로젝트 ID                  |
+| `TOKEN`      | 텔레그램 봇 토큰 (`@BotFather`에서 발급)       |
 
 > Amazon Linux를 사용하는 경우 `ubuntu@$IP` → `ec2-user@$IP` 로 변경하세요.
 

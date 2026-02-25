@@ -130,6 +130,20 @@ if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
         echo "  [SKIP] TELEGRAM_BOT_TOKEN already in ~/.bashrc"
     fi
 fi
+# Vertex AI 관련 설정 영구 등록
+if [ -n "$GOOGLE_GENAI_USE_VERTEXAI" ]; then
+    if ! grep -q "GOOGLE_GENAI_USE_VERTEXAI" "$HOME/.bashrc"; then
+        echo "export GOOGLE_GENAI_USE_VERTEXAI=\"$GOOGLE_GENAI_USE_VERTEXAI\"" >> "$HOME/.bashrc"
+        echo "  [OK] GOOGLE_GENAI_USE_VERTEXAI added to ~/.bashrc"
+    fi
+fi
+
+if [ -n "$GOOGLE_CLOUD_PROJECT" ]; then
+    if ! grep -q "GOOGLE_CLOUD_PROJECT" "$HOME/.bashrc"; then
+        echo "export GOOGLE_CLOUD_PROJECT=\"$GOOGLE_CLOUD_PROJECT\"" >> "$HOME/.bashrc"
+        echo "  [OK] GOOGLE_CLOUD_PROJECT added to ~/.bashrc"
+    fi
+fi
 
 # -------------------------------------------------------------
 # [6] Playwright 자동 설치 (MCP 서버용)
