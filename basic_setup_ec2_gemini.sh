@@ -432,8 +432,14 @@ function log(msg) {
 }
 
 process.on('uncaughtException', (err) => {
+    // 소켓 험업 등 회복 가능한 네트워크 오류는 무시 (exit 하지 않음)
+    if (err.code === 'ECONNRESET' || err.message === 'socket hang up' || err.code === 'EPIPE') {
+        log(`Network glitch (ignored): ${err.message}`);
+        return;
+    }
     log(`FATAL: Uncaught Exception: ${err.message || err}`);
     if (err.stack) log(err.stack);
+    // 진짜 치명적인 오류만 exit
     process.exit(1);
 });
 
@@ -504,40 +510,41 @@ function handleMessage(msg) {
     log(`Received from @${user}: ${text.substring(0, 50)}...`);
     sendChatAction(chatId, 'typing');
 
-    try {
-        const command = `echo ${JSON.stringify(text)} | ${CLAUDE_PATH}`;
-        const rawOutput = execSync(command, { encoding: 'utf8', timeout: 60000 });
+    // 비동기로 실행하여 폴링을 차단하지 않음
+    setImmediate(async () => {
+        try {
+            const command = `echo ${JSON.stringify(text)} | ${CLAUDE_PATH}`;
+            const rawOutput = execSync(command, { encoding: 'utf8', timeout: 90000 });
 
-        // claude 브릿지는 JSON Lines 형식으로 출력 - result 필드 추출
-        let answer = null;
-        const lines = rawOutput.trim().split('\n');
-        for (const line of lines) {
-            try {
-                const parsed = JSON.parse(line);
-                if (parsed.type === 'result' && parsed.result) {
-                    answer = parsed.result;
-                    break;
-                }
-            } catch (_) {}
-        }
-        // fallback: assistant 메시지에서 text 추출
-        if (!answer) {
+            let answer = null;
+            const lines = rawOutput.trim().split('\n');
             for (const line of lines) {
                 try {
                     const parsed = JSON.parse(line);
-                    if (parsed.type === 'assistant' && parsed.message?.content) {
-                        const tc = parsed.message.content.find(c => c.type === 'text');
-                        if (tc) { answer = tc.text; break; }
+                    if (parsed.type === 'result' && parsed.result) {
+                        answer = parsed.result;
+                        break;
                     }
                 } catch (_) {}
             }
-        }
+            if (!answer) {
+                for (const line of lines) {
+                    try {
+                        const parsed = JSON.parse(line);
+                        if (parsed.type === 'assistant' && parsed.message?.content) {
+                            const tc = parsed.message.content.find(c => c.type === 'text');
+                            if (tc) { answer = tc.text; break; }
+                        }
+                    } catch (_) {}
+                }
+            }
 
-        sendMessage(chatId, answer?.trim() || "(응답이 없습니다)");
-    } catch (e) {
-        log(`Bridge Exec Error: ${e.message}`);
-        sendMessage(chatId, "⚠️ AI 응답 생성 중 오류가 발생했습니다.");
-    }
+            sendMessage(chatId, answer?.trim() || "(응답이 없습니다)");
+        } catch (e) {
+            log(`Bridge Exec Error: ${e.message}`);
+            sendMessage(chatId, "⚠️ AI 응답 생성 중 오류가 발생했습니다.");
+        }
+    });
 }
 
 function sendMessage(chatId, text) {
@@ -553,7 +560,16 @@ function sendMessage(chatId, text) {
         }
     };
 
-    const req = https.request(options);
+    // 응답 소비 필수: 없으면 socket hang up 발생
+    const req = https.request(options, (res) => {
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => {
+            if (res.statusCode !== 200) {
+                log(`Send Failed (HTTP ${res.statusCode}): ${body}`);
+            }
+        });
+    });
     req.on('error', (e) => log(`Send Error: ${e.message}`));
     req.write(payload);
     req.end();
@@ -571,7 +587,9 @@ function sendChatAction(chatId, action) {
             'Content-Length': Buffer.byteLength(payload)
         }
     };
-    const req = https.request(options);
+    // 응답 소비
+    const req = https.request(options, (res) => { res.resume(); });
+    req.on('error', () => {});
     req.write(payload);
     req.end();
 }
