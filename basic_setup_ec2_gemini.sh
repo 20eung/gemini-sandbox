@@ -100,6 +100,29 @@ else
 fi
 
 # -------------------------------------------------------------
+# [4.5] 환경변수 보정 (현재 환경에 없으면 .bashrc에서 추출)
+# -------------------------------------------------------------
+echo ""
+echo "[4.5] Ensuring environment variables for services..."
+
+extract_from_bashrc() {
+    local var_name=$1
+    if [ -z "${!var_name}" ]; then
+        # .bashrc에서 export 변수="값" 형식 추출
+        local found=$(grep "export $var_name=" "$HOME/.bashrc" | head -1 | sed -E 's/.*="?([^"]*)"?/\1/')
+        if [ -n "$found" ]; then
+            export "$var_name"="$found"
+            echo "  [OK] Extracted $var_name from ~/.bashrc"
+        fi
+    fi
+}
+
+extract_from_bashrc "TELEGRAM_BOT_TOKEN"
+extract_from_bashrc "GEMINI_API_KEY"
+extract_from_bashrc "GOOGLE_GENAI_USE_VERTEXAI"
+extract_from_bashrc "GOOGLE_CLOUD_PROJECT"
+
+# -------------------------------------------------------------
 # [5] GEMINI_API_KEY 환경변수 설정 (.bashrc에 영구 등록)
 # -------------------------------------------------------------
 echo ""
@@ -532,29 +555,28 @@ ENV_FILE="/etc/systemd/system/${SERVICE_NAME}.env"
 USER_NAME=$(whoami)
 HOME_DIR=$HOME
 
-# NVM이 설치된 실제 Node 경로 감지
-# (이미 스크립트 상단에서 NVM을 source했으므로 which node가 가능함)
+# 실제 바이너리 절대 경로 감지 (심볼릭 링크 대신 실제 경로 사용 추천)
 NODE_BIN=$(which node)
-if [[ -z "$NODE_BIN" ]]; then
-    NODE_BIN="$HOME/.local/bin/node" # 차선책: 아까 만든 링크 시도
-fi
-echo "  [INFO] Using Node binary: $NODE_BIN"
+GEMINI_BIN=$(which gemini)
 
-# 환경변수 파일 생성 (현재 쉘 환경의 토큰 보존)
+if [ -z "$NODE_BIN" ]; then
+    echo "  [ERROR] Node binary not found! Please check NVM status."
+    exit 1
+fi
+
+# 환경변수 파일 생성 (모든 토큰 확실히 주입)
 sudo bash -c "cat > $ENV_FILE" << ENV_EOF
 TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
 GEMINI_API_KEY=$GEMINI_API_KEY
 GOOGLE_GENAI_USE_VERTEXAI=$GOOGLE_GENAI_USE_VERTEXAI
 GOOGLE_CLOUD_PROJECT=$GOOGLE_CLOUD_PROJECT
-# 가교(Bridge)에서 사용할 Gemini 경로 주입
-GEMINI_BIN_PATH=$(which gemini)
-PATH=$(dirname "$NODE_BIN"):$HOME/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+GEMINI_BIN_PATH=$GEMINI_BIN
 HOME=$HOME_DIR
+PATH=$(dirname "$NODE_BIN"):$HOME_DIR/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV_EOF
 sudo chmod 600 "$ENV_FILE"
 
 # systemd 유닛 파일 생성
-# ($HOME 및 $BOT_SCRIPT 변수를 이 설치 스크립트 실행 시점에 확장하여 절대 경로로 기입)
 sudo bash -c "cat > $SERVICE_FILE" << EOF
 [Unit]
 Description=Gemini CLI Telegram Bot Service
@@ -564,9 +586,8 @@ After=network.target
 Type=simple
 User=$USER_NAME
 WorkingDirectory=$HOME_DIR
-# 환경변수 로딩
 EnvironmentFile=$ENV_FILE
-# 절대 경로로 직접 실행
+# 바이너리와 스크립트 모두 절대 경로로 기입
 ExecStart=$NODE_BIN $BOT_SCRIPT
 Restart=always
 RestartSec=10
