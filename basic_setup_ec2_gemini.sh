@@ -396,23 +396,23 @@ GEMINI_BIN_PATH=$(which gemini)
 
 cat > "$BOT_SCRIPT" << EOF
 /**
- * Built-in Gemini Telegram Bot (No external dependencies)
+ * Built-in Gemini Telegram Bot
  */
+const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const CLAUDE_PATH = require('path').join(process.env.HOME, '.local/bin/claude');
+const LOG_FILE = '/tmp/gemini-bot.log';
+const NODE_BIN_DIR = require('path').dirname("${NODE_BIN_PATH}");
+
+// 시스템 PATH에 Node 바이너리 경로 추가 (execSync용)
+process.env.PATH = NODE_BIN_DIR + require('path').delimiter + process.env.PATH;
+// 가교(Bridge)에서 사용할 Gemini 경로 전달
+process.env.GEMINI_BIN_PATH = "${GEMINI_BIN_PATH}";
+EOF
+
+cat >> "$BOT_SCRIPT" << 'EOF'
 const https = require('https');
 const { execSync } = require('child_process');
 const fs = require('fs');
-const path = require('path');
-
-const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const CLAUDE_PATH = path.join(process.env.HOME, '.local/bin/claude');
-const LOG_FILE = '/tmp/gemini-bot.log';
-const NODE_BIN_DIR = path.dirname("${NODE_BIN_PATH}");
-const NODE_EXECUTABLE = "${NODE_BIN_PATH}";
-
-// 시스템 PATH에 Node 바이너리 경로 추가 (execSync용)
-process.env.PATH = NODE_BIN_DIR + path.delimiter + process.env.PATH;
-// 가교(Bridge)에서 사용할 Gemini 경로 전달
-process.env.GEMINI_BIN_PATH = "${GEMINI_BIN_PATH}";
 
 if (!TOKEN) {
     console.error("Error: TELEGRAM_BOT_TOKEN is not set.");
@@ -421,7 +421,7 @@ if (!TOKEN) {
 
 function log(msg) {
     const time = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '');
-    const entry = \`[\${time}] \${msg}\\n\`;
+    const entry = `[${time}] ${msg}\n`;
     fs.appendFileSync(LOG_FILE, entry);
     console.log(msg);
 }
@@ -429,7 +429,7 @@ function log(msg) {
 let lastUpdateId = 0;
 
 function poll() {
-    const url = \`https://api.telegram.org/bot\${TOKEN}/getUpdates?offset=\${lastUpdateId + 1}&timeout=30\`;
+    const url = `https://api.telegram.org/bot${TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=30`;
     
     https.get(url, (res) => {
         let data = '';
@@ -446,12 +446,12 @@ function poll() {
                     });
                 }
             } catch (e) {
-                log(\`JSON Parse Error: \${e.message}\`);
+                log(`JSON Parse Error: ${e.message}`);
             }
             setTimeout(poll, 100);
         });
     }).on('error', (e) => {
-        log(\`Polling Error: \${e.message}\`);
+        log(`Polling Error: ${e.message}`);
         setTimeout(poll, 5000);
     });
 }
@@ -461,20 +461,19 @@ function handleMessage(msg) {
     const text = msg.text;
     const user = msg.from ? msg.from.username || msg.from.first_name : 'Unknown';
 
-    log(\`Received from @\${user}: \${text.substring(0, 50)}...\`);
+    log(`Received from @${user}: ${text.substring(0, 50)}...`);
 
     // 봇에게 로딩 중임을 알리는 Typing 액션
     sendChatAction(chatId, 'typing');
 
     try {
         // bridge(claude) 호출
-        // 쉘 이스케이프를 위해 따옴표 처리 및 특수문자 주의
-        const command = \`echo \${JSON.stringify(text)} | \${CLAUDE_PATH}\`;
+        const command = `echo ${JSON.stringify(text)} | ${CLAUDE_PATH}`;
         const response = execSync(command, { encoding: 'utf8', timeout: 60000 });
         
         sendMessage(chatId, response.trim() || "(응답이 없습니다)");
     } catch (e) {
-        log(\`Bridge Exec Error: \${e.message}\`);
+        log(`Bridge Exec Error: ${e.message}`);
         sendMessage(chatId, "⚠️ AI 응답 생성 중 오류가 발생했습니다.");
     }
 }
@@ -484,7 +483,7 @@ function sendMessage(chatId, text) {
     const options = {
         hostname: 'api.telegram.org',
         port: 443,
-        path: \`/bot\${TOKEN}/sendMessage\`,
+        path: `/bot${TOKEN}/sendMessage`,
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -495,7 +494,7 @@ function sendMessage(chatId, text) {
     const req = https.request(options, (res) => {
         res.on('data', () => {});
     });
-    req.on('error', (e) => log(\`Send Error: \${e.message}\`));
+    req.on('error', (e) => log(`Send Error: ${e.message}`));
     req.write(payload);
     req.end();
 }
@@ -505,7 +504,7 @@ function sendChatAction(chatId, action) {
     const options = {
         hostname: 'api.telegram.org',
         port: 443,
-        path: \`/bot\${TOKEN}/sendChatAction\`,
+        path: `/bot${TOKEN}/sendChatAction`,
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
