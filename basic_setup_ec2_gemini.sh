@@ -369,37 +369,144 @@ if ! grep -q "NVM_DIR" "$HOME/.bashrc"; then
 fi
 
 # -------------------------------------------------------------
-# [10] systemd 서비스 등록 (상시 실행 및 재부팅 대응)
+# [10] 내장형 텔레그램 봇(Node.js) 생성
 # -------------------------------------------------------------
 echo ""
-echo "[10] Setting up systemd service for Gemini Telegram Bot..."
+echo "[10] Creating built-in Telegram Bot for Gemini..."
 
-# 서비스 명칭 정의
+mkdir -p "$HOME/.local/bin"
+BOT_SCRIPT="$HOME/.local/bin/gemini-telegram-bot.js"
+
+cat > "$BOT_SCRIPT" << 'EOF'
+/**
+ * Built-in Gemini Telegram Bot (No external dependencies)
+ */
+const https = require('https');
+const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const CLAUDE_PATH = path.join(process.env.HOME, '.local/bin/claude');
+const LOG_FILE = '/tmp/gemini-bot.log';
+
+if (!TOKEN) {
+    console.error("Error: TELEGRAM_BOT_TOKEN is not set.");
+    process.exit(1);
+}
+
+function log(msg) {
+    const time = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '');
+    const entry = `[${time}] ${msg}\n`;
+    fs.appendFileSync(LOG_FILE, entry);
+    console.log(msg);
+}
+
+let lastUpdateId = 0;
+
+function poll() {
+    const url = `https://api.telegram.org/bot${TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=30`;
+    
+    https.get(url, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+            try {
+                const json = JSON.parse(data);
+                if (json.ok && json.result.length > 0) {
+                    json.result.forEach(update => {
+                        lastUpdateId = update.update_id;
+                        if (update.message && update.message.text) {
+                            handleMessage(update.message);
+                        }
+                    });
+                }
+            } catch (e) {
+                log(`JSON Parse Error: ${e.message}`);
+            }
+            setTimeout(poll, 100);
+        });
+    }).on('error', (e) => {
+        log(`Polling Error: ${e.message}`);
+        setTimeout(poll, 5000);
+    });
+}
+
+function handleMessage(msg) {
+    const chatId = msg.chat.id;
+    const text = msg.text;
+    const user = msg.from ? msg.from.username || msg.from.first_name : 'Unknown';
+
+    log(`Received from @${user}: ${text.substring(0, 50)}...`);
+
+    // 봇에게 로딩 중임을 알리는 Typing 액션
+    sendChatAction(chatId, 'typing');
+
+    try {
+        // bridge(claude) 호출
+        // 쉘 이스케이프를 위해 따옴표 처리 및 특수문자 주의
+        const command = `echo ${JSON.stringify(text)} | ${CLAUDE_PATH}`;
+        const response = execSync(command, { encoding: 'utf8', timeout: 60000 });
+        
+        sendMessage(chatId, response.trim() || "(응답이 없습니다)");
+    } catch (e) {
+        log(`Bridge Exec Error: ${e.message}`);
+        sendMessage(chatId, "⚠️ AI 응답 생성 중 오류가 발생했습니다.");
+    }
+}
+
+function sendMessage(chatId, text) {
+    const payload = JSON.stringify({ chat_id: chatId, text: text });
+    const options = {
+        hostname: 'api.telegram.org',
+        port: 443,
+        path: `/bot${TOKEN}/sendMessage`,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload)
+        }
+    };
+
+    const req = https.request(options, (res) => {
+        res.on('data', () => {});
+    });
+    req.on('error', (e) => log(`Send Error: ${e.message}`));
+    req.write(payload);
+    req.end();
+}
+
+function sendChatAction(chatId, action) {
+    const payload = JSON.stringify({ chat_id: chatId, action: action });
+    const options = {
+        hostname: 'api.telegram.org',
+        port: 443,
+        path: `/bot${TOKEN}/sendChatAction`,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload)
+        }
+    };
+    const req = https.request(options);
+    req.write(payload);
+    req.end();
+}
+
+log("Gemini Telegram Bot Started...");
+poll();
+EOF
+
+# -------------------------------------------------------------
+# [11] systemd 서비스 등록 (상시 실행 및 재부팅 대응)
+# -------------------------------------------------------------
+echo ""
+echo "[11] Setting up systemd service for Gemini Telegram Bot..."
+
 SERVICE_NAME="gemini-bot"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 USER_NAME=$(whoami)
 HOME_DIR=$HOME
-
-# 래퍼 스크립트 생성 (NVM 환경 및 텔레그램 토큰 보장)
-mkdir -p "$HOME_DIR/.local/bin"
-BOT_RUNNER="$HOME_DIR/.local/bin/gemini-bot-runner.sh"
-
-cat > "$BOT_RUNNER" << RUNNER
-#!/bin/bash
-# 1. 환경변수 로드
-export HOME="$HOME_DIR"
-export NVM_DIR="\$HOME/.nvm"
-[ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
-
-# 2. Node 버전 고정
-nvm use 24 > /dev/null
-
-# 3. 텔레그램 봇 실행
-# gemini-cli는 --yolo 플래그로 비대화형 환경에서 도구 승인 가능
-# background 실행을 위해 --output-format stream-json 또는 기본 실행
-exec gemini --yolo
-RUNNER
-chmod +x "$BOT_RUNNER"
 
 # systemd 유닛 파일 생성
 sudo bash -c "cat > $SERVICE_FILE" << EOF
@@ -411,11 +518,10 @@ After=network.target
 Type=simple
 User=$USER_NAME
 WorkingDirectory=$HOME_DIR
-# bash -lc를 사용하여 전역 환경변수(TELEGRAM_BOT_TOKEN 등)를 로드
-ExecStart=/bin/bash -lc '$BOT_RUNNER'
+# bash -lc를 사용하여 NVM 및 TELEGRAM_BOT_TOKEN 등 환경변수 로드
+ExecStart=/bin/bash -lc 'node $BOT_SCRIPT'
 Restart=always
 RestartSec=10
-# 로그 파일 설정
 StandardOutput=append:/tmp/${SERVICE_NAME}.log
 StandardError=append:/tmp/${SERVICE_NAME}.log
 
@@ -423,12 +529,12 @@ StandardError=append:/tmp/${SERVICE_NAME}.log
 WantedBy=multi-user.target
 EOF
 
-# 서비스 활성화
+# 서비스 활성화 및 시작
 sudo systemctl daemon-reload
 sudo systemctl enable ${SERVICE_NAME}.service
 sudo systemctl restart ${SERVICE_NAME}.service
 
-echo "  [OK] ${SERVICE_NAME}.service registered, enabled, and started"
+echo "  [OK] ${SERVICE_NAME}.service registered and started"
 echo "  [TIP] Check logs with: tail -f /tmp/${SERVICE_NAME}.log"
 
 # -------------------------------------------------------------
