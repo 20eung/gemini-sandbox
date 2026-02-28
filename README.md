@@ -21,15 +21,18 @@
 
 ## 원클릭 설치 (로컬에서 실행)
 
-> 변수를 매번 입력하기 번거롭다면 `.env` 파일로 관리할 수 있습니다.
->
-> ```bash
-> cp .env.sample .env   # .env 파일 생성
-> # .env 파일을 열어 값 입력 후
-> source .env           # 변수 로드
-> ```
+### 방법 1 — .env 파일 사용 (macOS / Linux)
 
-### macOS / Linux
+```bash
+cp .env.sample .env
+# .env 파일을 열어 PEM, IP, TELEGRAM_BOT_TOKEN, GEMINI_API_KEY 값 입력
+source .env
+
+ssh -t -i "$PEM" ubuntu@$IP \
+  "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN GEMINI_API_KEY=$GEMINI_API_KEY bash -ic \"source <(curl -sL $URL) && gemini\""
+```
+
+### 방법 2 — 환경변수 직접 지정 (macOS / Linux)
 
 ```bash
 export PEM=~/Downloads/my-key.pem
@@ -42,7 +45,7 @@ ssh -t -i "$PEM" ubuntu@$IP \
   "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN GEMINI_API_KEY=$GEMINI_API_KEY bash -ic \"source <(curl -sL $URL) && gemini\""
 ```
 
-### Windows (PowerShell)
+### 방법 2 — 환경변수 직접 지정 (Windows PowerShell)
 
 ```powershell
 $PEM = "my-key.pem"
