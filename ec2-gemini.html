@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EC2 Gemini CLI 설치 가이드</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1117;
+      --bg-sidebar: #161b22;
+      --bg-card: #1c2128;
+      --bg-code: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --text-code: #79c0ff;
+      --accent: #1a73e8;
+      --accent-light: #4285f4;
+      --accent-glow: rgba(26, 115, 232, 0.15);
+      --green: #3fb950;
+      --yellow: #d29922;
+      --red: #f85149;
+      --purple: #bc8cff;
+      --sidebar-width: 260px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Noto Sans KR', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border);
+      position: fixed;
+      top: 0; left: 0;
+      height: 100vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+    }
+
+    .sidebar-logo {
+      padding: 24px 20px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-logo .logo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent-glow);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-light);
+      margin-bottom: 10px;
+    }
+
+    .sidebar-logo h2 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    .sidebar-logo p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .sidebar-nav {
+      padding: 12px 0;
+      flex: 1;
+    }
+
+    .nav-section {
+      padding: 8px 20px 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+
+    .nav-item {
+      display: block;
+      padding: 7px 20px;
+      font-size: 13.5px;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-left: 3px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .nav-item:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.04);
+      border-left-color: var(--border);
+    }
+
+    .nav-item.active {
+      color: var(--accent-light);
+      background: var(--accent-glow);
+      border-left-color: var(--accent);
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .sidebar-footer a {
+      color: var(--accent-light);
+      text-decoration: none;
+    }
+
+    /* ── Main Content ── */
+    .main {
+      margin-left: var(--sidebar-width);
+      flex: 1;
+      max-width: 860px;
+      padding: 48px 56px 80px;
+    }
+
+    .page-header {
+      margin-bottom: 40px;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .page-header .tag {
+      display: inline-block;
+      background: var(--accent-glow);
+      color: var(--accent-light);
+      border: 1px solid rgba(26,115,232,0.4);
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
+    .page-header h1 {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 12px;
+    }
+
+    .page-header p {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 600px;
+    }
+
+    /* ── Sections ── */
+    section {
+      margin-bottom: 56px;
+    }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      scroll-margin-top: 24px;
+    }
+
+    h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 24px 0 12px;
+      color: var(--text);
+    }
+
+    p { margin-bottom: 14px; color: var(--text-muted); }
+
+    strong { color: var(--text); }
+
+    /* ── Step Cards ── */
+    .steps { display: flex; flex-direction: column; gap: 16px; }
+
+    .step {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .step:hover { border-color: #484f58; }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 20px;
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .step-num {
+      width: 28px; height: 28px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .step-title { font-weight: 600; font-size: 15px; }
+
+    .step-badge {
+      margin-left: auto;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+
+    .badge-new { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+    .badge-fix { background: rgba(210,153,34,0.15); color: var(--yellow); border: 1px solid rgba(210,153,34,0.3); }
+    .badge-same { background: rgba(139,148,158,0.1); color: var(--text-muted); border: 1px solid rgba(139,148,158,0.2); }
+
+    .step-body { padding: 16px 20px; }
+
+    .step-desc { font-size: 14px; color: var(--text-muted); margin-bottom: 12px; }
+
+    /* ── Code Block ── */
+    .code-wrap {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .code-lang {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .copy-btn {
+      font-size: 11px;
+      color: var(--text-muted);
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 3px 9px;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .copy-btn:hover { color: var(--text); border-color: #484f58; }
+
+    pre {
+      padding: 16px 18px;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 13.5px;
+      line-height: 1.65;
+    }
+
+    pre code { color: var(--text); }
+
+    .cm { color: #8b949e; }   /* comment */
+    .ck { color: #ff7b72; }   /* keyword */
+    .cs { color: #a5d6ff; }   /* string */
+    .cv { color: #79c0ff; }   /* variable */
+    .cf { color: #d2a8ff; }   /* function */
+    .cn { color: #3fb950; }   /* number/name */
+
+    /* ── Info/Warning Callout ── */
+    .callout {
+      display: flex;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+
+    .callout-info { background: rgba(26,115,232,0.1); border: 1px solid rgba(26,115,232,0.3); }
+    .callout-warn { background: rgba(210,153,34,0.1); border: 1px solid rgba(210,153,34,0.3); }
+    .callout-tip  { background: rgba(63,185,80,0.1);  border: 1px solid rgba(63,185,80,0.3); }
+
+    .callout-icon { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
+    .callout-text { color: var(--text-muted); line-height: 1.6; }
+    .callout-text strong { color: var(--text); }
+
+    /* ── Compare Table ── */
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin: 16px 0;
+    }
+
+    .compare-table th {
+      background: var(--bg-card);
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .compare-table td {
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      vertical-align: top;
+    }
+
+    .compare-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .tag-o { color: var(--green); font-weight: 600; }
+    .tag-x { color: var(--red); }
+    .tag-diff { color: var(--yellow); font-weight: 600; }
+
+    /* ── Checklist ── */
+    .checklist { list-style: none; display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+
+    .checklist li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .checklist li::before {
+      content: '✓';
+      color: var(--green);
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ── Inline code ── */
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      background: rgba(110,118,129,0.15);
+      color: var(--text-code);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    /* ── Breadcrumb ── */
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .breadcrumb a { color: var(--accent-light); text-decoration: none; }
+    .breadcrumb span { color: #484f58; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 24px 20px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ───────── SIDEBAR ───────── -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-badge">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+      Gemini CLI
+    </div>
+    <h2>EC2 Gemini CLI<br>설치 가이드</h2>
+    <p>AWS EC2 Ubuntu 환경 전용</p>
+  </div>
+
+  <div class="sidebar-nav">
+    <div class="nav-section">시작하기</div>
+    <a href="#overview" class="nav-item">개요</a>
+    <a href="#requirements" class="nav-item">준비물 3가지</a>
+
+    <div class="nav-section">설치</div>
+    <a href="#install" class="nav-item">원클릭 설치</a>
+    <a href="#steps" class="nav-item">설치 단계 상세</a>
+    <a href="#after-install" class="nav-item">설치 후 확인</a>
+
+    <div class="nav-section">사용</div>
+    <a href="#telegram-setup" class="nav-item">텔레그램 봇 연동</a>
+    <a href="#commands" class="nav-item">지원 커맨드</a>
+    <a href="#gemini-md" class="nav-item">GEMINI.md 설정</a>
+
+    <div class="nav-section">참고</div>
+    <a href="#vs-claude" class="nav-item">Claude Code 비교</a>
+    <a href="#faq" class="nav-item">FAQ</a>
+  </div>
+
+  <div class="sidebar-footer">
+    원본 가이드 →
+    <a href="https://cokacdir.cokac.com/#/ec2" target="_blank">cokacdir.cokac.com/#/ec2</a>
+  </div>
+</nav>
+
+<!-- ───────── MAIN ───────── -->
+<main class="main">
+
+  <div class="breadcrumb">
+    <a href="https://cokacdir.cokac.com/#/ec2">원본 가이드 (코드깎는노인)</a>
+    <span>/</span>
+    <span>Gemini CLI 버전</span>
+  </div>
+
+  <!-- HEADER -->
+  <div class="page-header">
+    <div class="tag">Google Gemini CLI · EC2 Setup</div>
+    <h1>EC2 Gemini CLI<br>설치 가이드</h1>
+    <p>AWS EC2 Ubuntu 인스턴스에 Gemini CLI를 설치하고 텔레그램 봇으로 연결하는 상세 가이드입니다. 환경변수 4개 설정 + SSH 명령 1개로 전체 설치가 완료됩니다.</p>
+  </div>
+
+<!-- ───────── MAIN ───────── -->
+<main class="main">
+
+  <div class="breadcrumb">
+    <a href="https://cokacdir.cokac.com/#/ec2">원본 가이드 (코드깎는노인)</a>
+    <span>/</span>
+    <span>Gemini CLI 버전</span>
+  </div>
+
+  <!-- HEADER -->
+  <div class="page-header">
+    <div class="tag">Google Gemini CLI · EC2 Setup</div>
+    <h1>EC2 Gemini CLI<br>설치 가이드</h1>
+    <p>AWS EC2 Ubuntu 인스턴스에 Gemini CLI를 설치하고 텔레그램 봇으로 연결하는 상세 가이드입니다. 환경변수 4개 설정 + SSH 명령 1개로 전체 설치가 완료됩니다.</p>
+  </div>
+
+  <!-- OVERVIEW -->
+  <section id="overview">
+    <h2>개요</h2>
+    <p>AWS EC2 인스턴스에 AI 샌드박스를 구성하고, <strong>텔레그램 봇</strong>을 통해 언제 어디서나 Gemini AI와 소통하는 환경을 만듭니다.</p>
+
+    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin: 20px 0;">
+      <div style="font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px;">전체 아키텍처</div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px;">
+        <div style="background: rgba(26,115,232,0.15); border: 1px solid rgba(26,115,232,0.4); border-radius: 8px; padding: 8px 14px; text-align: center;">
+          <div style="font-size: 20px; margin-bottom: 4px;">📱</div>
+          <div style="color: var(--accent-light); font-weight: 600;">텔레그램 앱</div>
+          <div style="font-size: 11px; color: var(--text-muted);">사용자</div>
+        </div>
+        <div style="color: var(--text-muted); font-size: 18px;">→</div>
+        <div style="background: rgba(63,185,80,0.1); border: 1px solid rgba(63,185,80,0.3); border-radius: 8px; padding: 8px 14px; text-align: center;">
+          <div style="font-size: 20px; margin-bottom: 4px;">🤖</div>
+          <div style="color: var(--green); font-weight: 600;">cokacdir 봇</div>
+          <div style="font-size: 11px; color: var(--text-muted);">메시지 중계</div>
+        </div>
+        <div style="color: var(--text-muted); font-size: 18px;">→</div>
+        <div style="background: rgba(188,140,255,0.1); border: 1px solid rgba(188,140,255,0.3); border-radius: 8px; padding: 8px 14px; text-align: center;">
+          <div style="font-size: 20px; margin-bottom: 4px;">🔧</div>
+          <div style="color: var(--purple); font-weight: 600;">claude shim v4</div>
+          <div style="font-size: 11px; color: var(--text-muted);">브릿지</div>
+        </div>
+        <div style="color: var(--text-muted); font-size: 18px;">→</div>
+        <div style="background: rgba(210,153,34,0.1); border: 1px solid rgba(210,153,34,0.3); border-radius: 8px; padding: 8px 14px; text-align: center;">
+          <div style="font-size: 20px; margin-bottom: 4px;">✨</div>
+          <div style="color: var(--yellow); font-weight: 600;">Gemini CLI</div>
+          <div style="font-size: 11px; color: var(--text-muted);">AI 처리</div>
+        </div>
+      </div>
+      <div style="margin-top: 12px; font-size: 13px; color: var(--text-muted);">텔레그램 메시지 → cokacdir → claude shim v4 → Gemini CLI → 응답 → 텔레그램</div>
+    </div>
+
+    <ul class="checklist">
+      <li>스왑 메모리 16GB (소형 인스턴스 메모리 보완)</li>
+      <li>cokacdir — 텔레그램 봇 + 파일 매니저 + 스케줄러</li>
+      <li>NVM v0.40.1 + Node.js 24</li>
+      <li>Google Gemini CLI (<code>@google/gemini-cli</code>)</li>
+      <li>playwright-cli + 헤드리스 브라우저 자동화</li>
+      <li>claude shim v4 — cokacdir → Gemini CLI 브릿지 (<code>~/.local/bin/claude</code>)</li>
+      <li>GEMINI.md + skills 파일 4개 (시스템 프롬프트 + 커맨드 컨텍스트)</li>
+    </ul>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-text">
+        <strong>원본과 동일한 사용자 경험</strong><br>
+        코드깎는노인 유튜버의 <a href="https://cokacdir.cokac.com/#/ec2" target="_blank" style="color:var(--accent-light)">Claude Code EC2 가이드</a>와 동일한 방식으로,
+        Gemini CLI 버전을 구현했습니다. 설치 방법(환경변수 + SSH 1개 명령)이 완전히 동일합니다.
+      </div>
+    </div>
+  </section>
+
+  <!-- REQUIREMENTS -->
+  <section id="requirements">
+    <h2>준비물 3가지</h2>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 20px 0;">
+      <div style="background: var(--bg-card); border: 2px solid rgba(26,115,232,0.4); border-radius: 12px; padding: 24px 16px; text-align: center;">
+        <div style="font-size: 36px; margin-bottom: 12px;">🌐</div>
+        <div style="font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 8px;">EC2 공인 IP</div>
+        <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">AWS 콘솔에서 확인하는<br>공인 IPv4 주소</div>
+        <div style="margin-top: 10px; font-size: 12px; color: var(--accent-light); background: var(--accent-glow); border-radius: 6px; padding: 4px 8px; display: inline-block;">예: 13.124.xxx.xxx</div>
+      </div>
+      <div style="background: var(--bg-card); border: 2px solid rgba(63,185,80,0.4); border-radius: 12px; padding: 24px 16px; text-align: center;">
+        <div style="font-size: 36px; margin-bottom: 12px;">🔑</div>
+        <div style="font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 8px;">PEM 키파일</div>
+        <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">EC2 인스턴스 생성 시<br>다운로드한 키파일</div>
+        <div style="margin-top: 10px; font-size: 12px; color: var(--green); background: rgba(63,185,80,0.1); border-radius: 6px; padding: 4px 8px; display: inline-block;">예: my-key.pem</div>
+      </div>
+      <div style="background: var(--bg-card); border: 2px solid rgba(188,140,255,0.4); border-radius: 12px; padding: 24px 16px; text-align: center;">
+        <div style="font-size: 36px; margin-bottom: 12px;">📱</div>
+        <div style="font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 8px;">텔레그램 봇 토큰</div>
+        <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5;"><code>@BotFather</code>에서<br>발급한 봇 토큰</div>
+        <div style="margin-top: 10px; font-size: 12px; color: var(--purple); background: rgba(188,140,255,0.1); border-radius: 6px; padding: 4px 8px; display: inline-block;">예: 1234567890:AABBcc...</div>
+      </div>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">📱</span>
+      <div class="callout-text">
+        <strong>텔레그램 봇 토큰 발급</strong><br>
+        텔레그램 앱 → <code>@BotFather</code> 검색 → <code>/newbot</code> → 봇 이름 설정 → 토큰 발급<br>
+        토큰 형식: <code>1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR</code>
+      </div>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">🔑</span>
+      <div class="callout-text">
+        <strong>Gemini API 키 발급</strong><br>
+        <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent-light)">Google AI Studio</a>에서 무료로 발급 가능합니다.
+        서버 환경에서는 반드시 <strong>API 키 방식</strong>을 사용하세요. OAuth(Google 계정 로그인) 방식은 브라우저가 필요해 서버에 부적합합니다.
+      </div>
+    </div>
+  </section>
+
+  <!-- INSTALL -->
+  <section id="install">
+    <h2>원클릭 설치</h2>
+
+    <p>로컬 터미널에서 아래 명령을 실행하면 EC2에 자동으로 전체 환경이 구성됩니다.</p>
+
+    <h3>macOS / Linux</h3>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-lang">bash (로컬 터미널)</span>
+        <button class="copy-btn" onclick="copyCode(this)">복사</button>
+      </div>
+      <pre><code><span class="ck">export</span> <span class="cv">PEM</span>=<span class="cs">~/Downloads/my-key.pem</span>
+<span class="ck">export</span> <span class="cv">IP</span>=<span class="cs">13.124.xxx.xxx</span>
+<span class="ck">export</span> <span class="cv">TOKEN</span>=<span class="cs">1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR</span>
+<span class="ck">export</span> <span class="cv">GEMINI_API_KEY</span>=<span class="cs">your_gemini_api_key_here</span>
+<span class="ck">export</span> <span class="cv">URL</span>=<span class="cs">https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/main/basic_setup_ec2_gemini.sh</span>
+
+ssh -t -i <span class="cs">"$PEM"</span> ubuntu@<span class="cv">$IP</span> \
+  <span class="cs">"TELEGRAM_BOT_TOKEN=$TOKEN GEMINI_API_KEY=$GEMINI_API_KEY bash -ic \"source &lt;(curl -sL $URL) &amp;&amp; gemini\""</span></code></pre>
+    </div>
+
+    <h3>Windows (PowerShell)</h3>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-lang">powershell</span>
+        <button class="copy-btn" onclick="copyCode(this)">복사</button>
+      </div>
+      <pre><code><span class="cv">$PEM</span> = <span class="cs">"my-key.pem"</span>
+<span class="cv">$IP</span> = <span class="cs">"13.124.xxx.xxx"</span>
+<span class="cv">$TOKEN</span> = <span class="cs">"1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR"</span>
+<span class="cv">$GEMINI_API_KEY</span> = <span class="cs">"your_gemini_api_key_here"</span>
+<span class="cv">$URL</span> = <span class="cs">"https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/main/basic_setup_ec2_gemini.sh"</span>
+
+ssh -t -i <span class="cv">$PEM</span> ubuntu@<span class="cv">$IP</span> `
+  <span class="cs">"TELEGRAM_BOT_TOKEN=$TOKEN GEMINI_API_KEY=$GEMINI_API_KEY bash -ic 'source &lt;(curl -sL $URL) &amp;&amp; gemini'"</span></code></pre>
+    </div>
+
+    <table class="compare-table" style="margin-top: 16px;">
+      <thead><tr><th>변수</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td><code>PEM</code></td><td>EC2 접속용 PEM 키파일 경로</td></tr>
+        <tr><td><code>IP</code></td><td>EC2 인스턴스 공인 IP</td></tr>
+        <tr><td><code>TOKEN</code></td><td>텔레그램 봇 토큰 (<code>@BotFather</code>에서 발급)</td></tr>
+        <tr><td><code>GEMINI_API_KEY</code></td><td><a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent-light)">Google AI Studio</a>에서 발급한 API 키</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-warn" style="margin-top: 16px;">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-text">
+        Amazon Linux는 <code>ubuntu@$IP</code> → <code>ec2-user@$IP</code> 로 변경하세요.
+      </div>
+    </div>
+
+    <h3>설치 완료 후 추가 작업</h3>
+    <p>Gemini CLI 인증이 완료되면 EC2 서버에서 아래를 실행합니다.</p>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-lang">bash (EC2 서버)</span>
+        <button class="copy-btn" onclick="copyCode(this)">복사</button>
+      </div>
+      <pre><code><span class="cm"># 1. cokacdir 텔레그램 봇 설정</span>
+npx -y service-setup-cokacdir <span class="cv">&lt;YOUR_BOT_TOKEN&gt;</span>
+
+<span class="cm"># 2. 그룹 채팅 사용 시 — BotFather Privacy Mode OFF</span>
+<span class="cm"># @BotFather → /mybots → Bot Settings → Group Privacy → Turn off</span></code></pre>
+    </div>
+  </section>
+
+  <!-- STEPS -->
+  <section id="steps">
+    <h2>설치 단계 상세</h2>
+    <p>스크립트는 총 10단계로 구성되며, 각 단계는 이미 설치된 경우 자동으로 건너뜁니다 (멱등성).</p>
+
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">0</div>
+          <span class="step-title">.env 파일 로드</span>
+          <span class="step-badge badge-same">SKIP: 파일 없으면 환경변수 직접 사용</span>
+        </div>
+        <div class="step-body">
+          <p class="step-desc">스크립트 위치 또는 홈 디렉토리에서 <code>.env</code> 파일을 자동 탐색하여 로드합니다. ssh 명령에서 환경변수를 직접 전달하는 것이 주 사용 방법입니다.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">1</div>
+          <span class="step-title">스왑 16GB 설정</span>
+          <span class="step-badge badge-same">SKIP: /swapfile 존재 시</span>
+        </div>
+        <div class="step-body">
+          <p class="step-desc"><code>/swapfile</code>을 생성하고 <code>/etc/fstab</code>에 영구 등록합니다.</p>
+          <div class="code-wrap">
+            <div class="code-header"><span class="code-lang">bash</span></div>
+            <pre><code>sudo fallocate -l 16G /swapfile
+sudo chmod 600 /swapfile && sudo mkswap /swapfile
+sudo swapon /swapfile
+<span class="cf">echo</span> <span class="cs">'/swapfile none swap sw 0 0'</span> | sudo tee -a /etc/fstab</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">2</div>
+          <span class="step-title">cokacdir 설치</span>
+          <span class="step-badge badge-same">SKIP: command 존재 시</span>
+        </div>
+        <div class="step-body">
+          <p class="step-desc">텔레그램 봇 + 파일 매니저 + 스케줄러 기능을 제공하는 바이너리입니다. user systemd 서비스로 자동 등록됩니다.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">3</div>
+          <span class="step-title">NVM + Node.js 24 설치</span>
+          <span class="step-badge badge-same">SKIP: 각각 개별 체크</span>
+        </div>
+        <div class="step-body">
+          <p class="step-desc">NVM 설치 후 즉시 활성화하여 Node.js 24를 설치합니다. (<code>source ~/.bashrc</code> 방식의 서브쉘 문제를 회피합니다.)</p>
+          <div class="code-wrap">
+            <div class="code-header"><span class="code-lang">bash</span></div>
+            <pre><code><span class="cm"># NVM 즉시 활성화</span>
+<span class="ck">export</span> <span class="cv">NVM_DIR</span>=<span class="cs">"$HOME/.nvm"</span>
+[ -s <span class="cs">"$NVM_DIR/nvm.sh"</span> ] && \. <span class="cs">"$NVM_DIR/nvm.sh"</span>
+nvm install 24 && nvm use 24</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">4</div>
+          <span class="step-title">Gemini CLI 설치</span>
+          <span class="step-badge badge-new">SKIP: command 존재 시</span>
+        </div>
+        <div class="step-body">
+          <p class="step-desc">Google 공식 Gemini CLI를 설치합니다.</p>
+          <div class="code-wrap">
+            <div class="code-header"><span class="code-lang">bash</span></div>
+            <pre><code>npm install -g @google/gemini-cli</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">5</div>
+          <span class="step-title">환경변수 영구 등록</span>
+          <span class="step-badge badge-same">SKIP: 각 변수별 개별 체크</span>
+        </div>
+        <div class="step-body">
+          <p class="step-desc"><code>TELEGRAM_BOT_TOKEN</code>, <code>GEMINI_API_KEY</code>, <code>PATH</code>(<code>~/.local/bin</code>)를 <code>~/.bashrc</code>에 영구 등록합니다.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">6</div>
+          <span class="step-title">Playwright 시스템 의존성</span>
+          <span class="step-badge badge-same">Ubuntu 24(t64) / 이전 버전 fallback</span>
+        </div>
+        <div class="step-body">
+          <p class="step-desc">헤드리스 브라우저 실행에 필요한 시스템 패키지를 설치합니다. Ubuntu 24.04의 <code>t64</code> 접미사 패키지를 우선 시도합니다.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">7</div>
+          <span class="step-title">playwright-cli + 브라우저 설치</span>
+          <span class="step-badge badge-same">SKIP: 각각 개별 체크</span>
+        </div>
+        <div class="step-body">
+          <p class="step-desc">아키텍처를 감지하여 브라우저를 설치합니다. AppArmor 제한도 자동으로 해제합니다.</p>
+          <table class="compare-table" style="margin-top:8px">
+            <thead><tr><th>아키텍처</th><th>브라우저</th><th>비고</th></tr></thead>
+            <tbody>
+              <tr><td><code>x86_64</code> / <code>amd64</code></td><td><span class="tag-o">chrome</span></td><td>일반 EC2</td></tr>
+              <tr><td><code>aarch64</code> (ARM/Graviton)</td><td><span class="tag-diff">chromium</span></td><td><code>/opt/google/chrome/chrome</code> symlink 자동 생성</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">8</div>
+          <span class="step-title">claude shim v4 설치</span>
+          <span class="step-badge badge-new">SKIP: "Bridge v4" 문자열 체크</span>
+        </div>
+        <div class="step-body">
+          <p class="step-desc">cokacdir → Gemini CLI 브릿지 Python 스크립트를 <code>~/.local/bin/claude</code>에 설치합니다. 구버전(v1~v3) 존재 시 자동 백업 후 v4로 업그레이드합니다.</p>
+          <ul class="checklist">
+            <li>스트리밍 응답 (<code>--output-format stream-json</code>)</li>
+            <li>세션 이어가기 (<code>~/.cokacdir/session_map.json</code>)</li>
+            <li>모델 선택 (opus/sonnet/haiku → Gemini 모델명 변환)</li>
+            <li>스킬 디스패치 (<code>/pdca</code>, <code>/code-review</code>, <code>/web</code>, <code>/playwright</code>)</li>
+            <li>bkit 노이즈 필터링</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">9</div>
+          <span class="step-title">GEMINI.md + skills 파일 설치</span>
+          <span class="step-badge badge-same">SKIP: 각 파일별 존재 체크</span>
+        </div>
+        <div class="step-body">
+          <p class="step-desc">Gemini CLI 시스템 프롬프트(<code>~/.gemini/GEMINI.md</code>)와 스킬 파일 4개를 설치합니다.</p>
+          <ul class="checklist">
+            <li><code>~/.gemini/GEMINI.md</code> — Telegram Markdown 규칙, 한국어, /help 템플릿</li>
+            <li><code>~/.gemini/skills/pdca.md</code> — PDCA 워크플로우</li>
+            <li><code>~/.gemini/skills/code-review.md</code> — 코드 리뷰</li>
+            <li><code>~/.gemini/skills/web.md</code> — 웹 분석</li>
+            <li><code>~/.gemini/skills/playwright.md</code> — 브라우저 자동화</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- AFTER INSTALL -->
+  <section id="after-install">
+    <h2>설치 후 확인</h2>
+
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-lang">bash</span>
+        <button class="copy-btn" onclick="copyCode(this)">복사</button>
+      </div>
+      <pre><code><span class="cm"># 환경변수 재로드</span>
+<span class="ck">source</span> ~/.bashrc
+
+<span class="cm"># 구성 요소 확인</span>
+node -v                        <span class="cm"># v24.x.x</span>
+gemini --version               <span class="cm"># Gemini CLI 버전</span>
+playwright-cli --version       <span class="cm"># Playwright 버전</span>
+cokacdir --version             <span class="cm"># cokacdir 버전</span>
+swapon --show                  <span class="cm"># 스왑 확인</span>
+
+<span class="cm"># claude shim v4 확인</span>
+head -3 ~/.local/bin/claude    <span class="cm"># "Bridge v4" 문구 확인</span>
+
+<span class="cm"># GEMINI.md 및 skills 확인</span>
+ls ~/.gemini/GEMINI.md
+ls ~/.gemini/skills/
+
+<span class="cm"># cokacdir 서비스 상태</span>
+systemctl --user status cokacdir.service</code></pre>
+    </div>
+  </section>
+
+  <!-- TELEGRAM SETUP -->
+  <section id="telegram-setup">
+    <h2>텔레그램 봇 연동</h2>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">🏗️</span>
+      <div class="callout-text">
+        <strong>동작 방식</strong><br>
+        텔레그램 메시지 → cokacdir(바이너리 봇) → claude shim v4(<code>~/.local/bin/claude</code>) → Gemini CLI → 응답<br>
+        EC2가 24시간 실행 중이므로 언제 어디서나 AI와 소통할 수 있습니다.
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">1</div>
+          <span class="step-title">Gemini CLI 인증</span>
+        </div>
+        <div class="step-body">
+          <p class="step-desc">설치 스크립트 실행 후 자동으로 <code>gemini</code>가 시작됩니다. 화면의 안내에 따라 API 키를 입력하거나 Google 계정으로 인증합니다.</p>
+          <div class="callout callout-warn">
+            <span class="callout-icon">⚠️</span>
+            <div class="callout-text">서버 환경에서는 <strong>API 키 방식</strong>을 사용하세요. OAuth 방식은 브라우저가 필요합니다.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">2</div>
+          <span class="step-title">cokacdir 봇 설정</span>
+        </div>
+        <div class="step-body">
+          <p class="step-desc">Gemini CLI 인증 완료 후 텔레그램 봇을 연결합니다.</p>
+          <div class="code-wrap">
+            <div class="code-header">
+              <span class="code-lang">bash</span>
+              <button class="copy-btn" onclick="copyCode(this)">복사</button>
+            </div>
+            <pre><code>npx -y service-setup-cokacdir <span class="cv">&lt;YOUR_BOT_TOKEN&gt;</span></code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">3</div>
+          <span class="step-title">그룹 채팅 설정 (선택)</span>
+        </div>
+        <div class="step-body">
+          <p class="step-desc">그룹에서 봇을 사용하려면 BotFather에서 Privacy Mode를 끄세요.</p>
+          <div class="callout callout-tip">
+            <span class="callout-icon">💡</span>
+            <div class="callout-text"><code>@BotFather</code> → <code>/mybots</code> → [봇 선택] → Bot Settings → Group Privacy → Turn off</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">4</div>
+          <span class="step-title">연동 테스트</span>
+        </div>
+        <div class="step-body">
+          <ul class="checklist">
+            <li>텔레그램에서 생성한 봇 검색 → 대화 시작</li>
+            <li>메시지 전송: <em>"안녕, 자기소개 해줘"</em></li>
+            <li>Gemini AI가 응답하면 연동 성공</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMMANDS -->
+  <section id="commands">
+    <h2>지원 커맨드</h2>
+    <p>텔레그램에서 <code>/help</code>를 입력하면 아래 커맨드 목록이 표시됩니다.</p>
+
+    <table class="compare-table">
+      <thead><tr><th>커맨드</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>자유 대화</td><td>무엇이든 질문 — 파일 읽기/쓰기, 코드 작성, 웹 검색 등</td></tr>
+        <tr><td><code>/pdca plan [기능명]</code></td><td>PDCA 계획 문서 작성</td></tr>
+        <tr><td><code>/pdca design [기능명]</code></td><td>설계 문서 작성</td></tr>
+        <tr><td><code>/pdca analyze [기능명]</code></td><td>설계↔구현 갭 분석</td></tr>
+        <tr><td><code>/pdca status</code></td><td>현재 PDCA 상태 확인</td></tr>
+        <tr><td><code>/code-review [파일]</code></td><td>코드 품질 리뷰 (버그, 보안, 성능)</td></tr>
+        <tr><td><code>/web [URL]</code></td><td>웹 페이지 내용 분석</td></tr>
+        <tr><td><code>/playwright</code></td><td>브라우저 자동화 가이드</td></tr>
+        <tr><td>스케줄</td><td><code>"N분 후에 [작업]해줘"</code> — cokacdir 네이티브</td></tr>
+        <tr><td>파일 전송</td><td>파일 생성 후 텔레그램으로 자동 전송</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-warn">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-text">
+        <strong>Shell 직접 실행 (<code>!ls</code> 등) 미지원</strong><br>
+        cokacdir 바이너리 구조상 <code>!</code> 접두사 명령은 전달되지 않습니다. Bash 도구를 통한 명령 실행은 정상 동작합니다.
+      </div>
+    </div>
+  </section>
+
+  <!-- GEMINI.md -->
+  <section id="gemini-md">
+    <h2>GEMINI.md 설정</h2>
+
+    <p>Claude Code의 <code>CLAUDE.md</code>와 유사하게, Gemini CLI는 <code>~/.gemini/GEMINI.md</code>를 시스템 프롬프트로 자동 로드합니다.</p>
+    <p>설치 스크립트가 자동으로 설치하며 다음 내용이 포함됩니다:</p>
+
+    <ul class="checklist">
+      <li>텔레그램 Markdown 포맷 규칙 (HTML 태그 미지원 대응)</li>
+      <li>한국어 응답 + 존댓말 설정</li>
+      <li><code>/help</code> 응답 템플릿</li>
+      <li>현재 서버 환경 정보 (Node.js 경로, Gemini CLI 경로)</li>
+    </ul>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-text">
+        <strong>커스터마이징</strong><br>
+        <code>~/.gemini/GEMINI.md</code> 파일이 이미 존재하면 스크립트가 덮어쓰지 않습니다 (사용자 설정 보호).
+        직접 편집하거나 삭제 후 재실행하면 새 버전으로 설치됩니다.
+      </div>
+    </div>
+  </section>
+
+  <!-- VS CLAUDE -->
+  <section id="vs-claude">
+    <h2>Claude Code와 비교</h2>
+
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>기능</th>
+          <th>Claude Code (원본)</th>
+          <th>Gemini CLI (이 가이드)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>AI 모델</td><td>Claude (Anthropic)</td><td>Gemini (Google)</td></tr>
+        <tr><td>인증</td><td>OAuth / API 키</td><td>GEMINI_API_KEY</td></tr>
+        <tr><td>파일 읽기/쓰기</td><td><span class="tag-o">✅</span></td><td><span class="tag-o">✅</span></td></tr>
+        <tr><td>Bash 명령 실행</td><td><span class="tag-o">✅</span></td><td><span class="tag-o">✅</span></td></tr>
+        <tr><td>웹 검색</td><td><span class="tag-o">✅</span></td><td><span class="tag-o">✅</span> (Google Search 내장)</td></tr>
+        <tr><td>브라우저 자동화</td><td>playwright-cli</td><td>playwright-cli</td></tr>
+        <tr><td>텔레그램 연동</td><td>cokacdir</td><td>cokacdir + claude shim v4</td></tr>
+        <tr><td>시스템 프롬프트 파일</td><td><code>CLAUDE.md</code></td><td><code>~/.gemini/GEMINI.md</code></td></tr>
+        <tr><td>설치 스크립트</td><td><code>basic_setup_ec2.sh</code></td><td><code>basic_setup_ec2_gemini.sh</code></td></tr>
+        <tr><td>설치 방식</td><td>원클릭 (로컬 실행)</td><td>원클릭 (로컬 실행)</td></tr>
+        <tr><td>Shell <code>!command</code></td><td><span class="tag-o">✅</span></td><td><span class="tag-diff">⚠️ cokacdir 구조적 제한</span></td></tr>
+        <tr><td>라이선스</td><td>상용</td><td>Apache 2.0 (오픈소스)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq">
+    <h2>FAQ</h2>
+
+    <h3>Q. EC2 서버에서 Gemini CLI를 사용해도 계정이 정지되나요?</h3>
+    <p>아니요. <strong>API 키 방식</strong>(<code>GEMINI_API_KEY</code>)으로 사용하면 Google Gemini API 이용약관상 서버 사용이 허용됩니다.</p>
+
+    <h3>Q. OAuth(Google 계정 로그인) 방식은 EC2에서 사용 가능한가요?</h3>
+    <p>사용하지 마세요. OAuth 방식은 브라우저가 필요하며 서버 headless 환경에 부적합합니다. 반드시 <strong>API 키 방식</strong>을 사용하세요.</p>
+
+    <h3>Q. ARM(aarch64) EC2에서도 동작하나요?</h3>
+    <p>예. ARM 환경에서는 chromium 채널을 설치하고 <code>/opt/google/chrome/chrome</code> symlink를 자동 생성합니다.</p>
+
+    <h3>Q. 스크립트 재실행이 안전한가요?</h3>
+    <p>예. 19개의 SKIP 처리로 완벽한 멱등성을 보장합니다. 이미 설치된 구성 요소는 모두 건너뜁니다.</p>
+
+    <h3>Q. 텔레그램 봇이 응답하지 않을 때 어떻게 하나요?</h3>
+    <p>1. <code>systemctl --user status cokacdir.service</code> — cokacdir 상태 확인<br>
+    2. <code>echo $TELEGRAM_BOT_TOKEN</code> — 환경변수 설정 확인<br>
+    3. EC2 보안 그룹에서 아웃바운드 HTTPS(443) 허용 여부 확인<br>
+    4. <code>cat /tmp/claude-gemini.log</code> — claude shim 로그 확인</p>
+
+    <h3>Q. Claude Code와 Gemini CLI를 같은 EC2에서 함께 사용할 수 있나요?</h3>
+    <p>예. 두 설정이 충돌하지 않으므로 같은 서버에서 <code>claude</code>와 <code>gemini</code> 명령을 각각 사용할 수 있습니다.</p>
+
+    <h3>Q. 텔레그램 봇 토큰이 없으면 설치가 안 되나요?</h3>
+    <p>설치 자체는 토큰 없이도 완료됩니다. 텔레그램 봇 연동(<code>npx -y service-setup-cokacdir</code>)만 나중에 별도로 실행하면 됩니다.</p>
+  </section>
+
+</main>
+
+<script>
+  function copyCode(btn) {
+    const pre = btn.closest('.code-wrap').querySelector('pre');
+    const text = pre.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = '복사됨!';
+      setTimeout(() => btn.textContent = '복사', 1800);
+    });
+  }
+
+  // Active nav on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const navItems = document.querySelectorAll('.nav-item');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        navItems.forEach(n => n.classList.remove('active'));
+        const active = document.querySelector(`.nav-item[href="#${e.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
