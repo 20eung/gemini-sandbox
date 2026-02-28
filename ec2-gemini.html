@@ -689,7 +689,7 @@ sudo swapon /swapfile
           <span class="step-badge badge-same">SKIP: command 존재 시</span>
         </div>
         <div class="step-body">
-          <p class="step-desc">텔레그램 봇 + 파일 매니저 + 스케줄러 기능을 제공하는 바이너리입니다. user systemd 서비스로 자동 등록됩니다.</p>
+          <p class="step-desc">텔레그램 봇 + 파일 매니저 + 스케줄러 기능을 제공합니다. Rust로 작성된 오픈소스(<a href="https://github.com/kstost/cokacdir" target="_blank" style="color:var(--accent-light)">github.com/kstost/cokacdir</a>)로, 컴파일된 바이너리로 배포됩니다. user systemd 서비스로 자동 등록됩니다.</p>
         </div>
       </div>
 
@@ -844,7 +844,7 @@ systemctl --user status cokacdir.service</code></pre>
       <span class="callout-icon">🏗️</span>
       <div class="callout-text">
         <strong>동작 방식</strong><br>
-        텔레그램 메시지 → cokacdir(바이너리 봇) → claude shim v4(<code>~/.local/bin/claude</code>) → Gemini CLI → 응답<br>
+        텔레그램 메시지 → cokacdir(Rust 봇) → claude shim v4(<code>~/.local/bin/claude</code>) → Gemini CLI → 응답<br>
         EC2가 24시간 실행 중이므로 언제 어디서나 AI와 소통할 수 있습니다.
       </div>
     </div>
@@ -936,7 +936,7 @@ systemctl --user status cokacdir.service</code></pre>
       <span class="callout-icon">⚠️</span>
       <div class="callout-text">
         <strong>Shell 직접 실행 (<code>!ls</code> 등) 미지원</strong><br>
-        cokacdir 바이너리 구조상 <code>!</code> 접두사 명령은 전달되지 않습니다. Bash 도구를 통한 명령 실행은 정상 동작합니다.
+        cokacdir 구조상 <code>!</code> 접두사 명령은 전달되지 않습니다. Bash 도구를 통한 명령 실행은 정상 동작합니다.
       </div>
     </div>
   </section>
