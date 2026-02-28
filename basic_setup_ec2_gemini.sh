@@ -258,11 +258,26 @@ cokacdir → Gemini CLI Bridge v4
 """
 import sys, os, subprocess, json, uuid, datetime, re, signal
 
-GEMINI_BIN = "GEMINI_BIN_PLACEHOLDER"
 SESSION_MAP_FILE = os.path.expanduser("~/.cokacdir/session_map.json")
 LOG_FILE = "/tmp/claude-gemini.log"
-NVM_PATH = "NVM_BIN_PLACEHOLDER"
 SKILLS_DIR = os.path.expanduser("~/.gemini/skills")
+
+def _find_gemini_bin():
+    """NVM 또는 PATH에서 gemini 바이너리를 런타임에 동적 탐색"""
+    import shutil
+    path = shutil.which('gemini')
+    if path:
+        return path
+    nvm_dir = os.path.expanduser('~/.nvm/versions/node')
+    if os.path.isdir(nvm_dir):
+        for ver in sorted(os.listdir(nvm_dir), reverse=True):
+            candidate = os.path.join(nvm_dir, ver, 'bin', 'gemini')
+            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                return candidate
+    return 'gemini'
+
+GEMINI_BIN = _find_gemini_bin()
+NVM_PATH = os.path.dirname(GEMINI_BIN) if GEMINI_BIN != 'gemini' else ''
 
 def log(m):
     try:
@@ -592,10 +607,7 @@ if __name__ == '__main__':
     main()
 SHIM_EOF
 
-    REAL_GEMINI_PATH=$(which gemini 2>/dev/null || echo 'gemini')
-    REAL_NVM_BIN=$(dirname "$REAL_GEMINI_PATH")
-    sed -i "s|GEMINI_BIN_PLACEHOLDER|$REAL_GEMINI_PATH|g" "$CLAUDE_WRAPPER"
-    sed -i "s|NVM_BIN_PLACEHOLDER|$REAL_NVM_BIN|g" "$CLAUDE_WRAPPER"
+    # GEMINI_BIN / NVM_PATH: shim이 런타임에 동적 탐색하므로 sed 치환 불필요
     chmod +x "$CLAUDE_WRAPPER"
     echo "  [OK] claude shim v4 installed: ~/.local/bin/claude"
 fi
