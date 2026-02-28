@@ -568,7 +568,21 @@
 
     <p>로컬 터미널에서 아래 명령을 실행하면 EC2에 자동으로 전체 환경이 구성됩니다.</p>
 
-    <h3>macOS / Linux</h3>
+    <h3>방법 1 — .env 파일 사용 (macOS / Linux)</h3>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-lang">bash (로컬 터미널)</span>
+        <button class="copy-btn" onclick="copyCode(this)">복사</button>
+      </div>
+      <pre><code>cp .env.sample .env
+<span class="cm"># .env 파일을 열어 PEM, IP, TELEGRAM_BOT_TOKEN, GEMINI_API_KEY 값 입력</span>
+<span class="ck">source</span> .env
+
+ssh -t -i <span class="cs">"$PEM"</span> ubuntu@<span class="cv">$IP</span> \
+  <span class="cs">"TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN GEMINI_API_KEY=$GEMINI_API_KEY bash -ic \"source &lt;(curl -sL $URL) &amp;&amp; gemini\""</span></code></pre>
+    </div>
+
+    <h3>방법 2 — 환경변수 직접 지정 (macOS / Linux)</h3>
     <div class="code-wrap">
       <div class="code-header">
         <span class="code-lang">bash (로컬 터미널)</span>
@@ -576,15 +590,15 @@
       </div>
       <pre><code><span class="ck">export</span> <span class="cv">PEM</span>=<span class="cs">~/Downloads/my-key.pem</span>
 <span class="ck">export</span> <span class="cv">IP</span>=<span class="cs">13.124.xxx.xxx</span>
-<span class="ck">export</span> <span class="cv">TOKEN</span>=<span class="cs">1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR</span>
+<span class="ck">export</span> <span class="cv">TELEGRAM_BOT_TOKEN</span>=<span class="cs">1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR</span>
 <span class="ck">export</span> <span class="cv">GEMINI_API_KEY</span>=<span class="cs">your_gemini_api_key_here</span>
 <span class="ck">export</span> <span class="cv">URL</span>=<span class="cs">https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/main/basic_setup_ec2_gemini.sh</span>
 
 ssh -t -i <span class="cs">"$PEM"</span> ubuntu@<span class="cv">$IP</span> \
-  <span class="cs">"TELEGRAM_BOT_TOKEN=$TOKEN GEMINI_API_KEY=$GEMINI_API_KEY bash -ic \"source &lt;(curl -sL $URL) &amp;&amp; gemini\""</span></code></pre>
+  <span class="cs">"TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN GEMINI_API_KEY=$GEMINI_API_KEY bash -ic \"source &lt;(curl -sL $URL) &amp;&amp; gemini\""</span></code></pre>
     </div>
 
-    <h3>Windows (PowerShell)</h3>
+    <h3>방법 2 — 환경변수 직접 지정 (Windows PowerShell)</h3>
     <div class="code-wrap">
       <div class="code-header">
         <span class="code-lang">powershell</span>
@@ -592,12 +606,12 @@ ssh -t -i <span class="cs">"$PEM"</span> ubuntu@<span class="cv">$IP</span> \
       </div>
       <pre><code><span class="cv">$PEM</span> = <span class="cs">"my-key.pem"</span>
 <span class="cv">$IP</span> = <span class="cs">"13.124.xxx.xxx"</span>
-<span class="cv">$TOKEN</span> = <span class="cs">"1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR"</span>
+<span class="cv">$TELEGRAM_BOT_TOKEN</span> = <span class="cs">"1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR"</span>
 <span class="cv">$GEMINI_API_KEY</span> = <span class="cs">"your_gemini_api_key_here"</span>
 <span class="cv">$URL</span> = <span class="cs">"https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/main/basic_setup_ec2_gemini.sh"</span>
 
 ssh -t -i <span class="cv">$PEM</span> ubuntu@<span class="cv">$IP</span> `
-  <span class="cs">"TELEGRAM_BOT_TOKEN=$TOKEN GEMINI_API_KEY=$GEMINI_API_KEY bash -ic 'source &lt;(curl -sL $URL) &amp;&amp; gemini'"</span></code></pre>
+  <span class="cs">"TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN GEMINI_API_KEY=$GEMINI_API_KEY bash -ic 'source &lt;(curl -sL $URL) &amp;&amp; gemini'"</span></code></pre>
     </div>
 
     <table class="compare-table" style="margin-top: 16px;">
@@ -605,7 +619,7 @@ ssh -t -i <span class="cv">$PEM</span> ubuntu@<span class="cv">$IP</span> `
       <tbody>
         <tr><td><code>PEM</code></td><td>EC2 접속용 PEM 키파일 경로</td></tr>
         <tr><td><code>IP</code></td><td>EC2 인스턴스 공인 IP</td></tr>
-        <tr><td><code>TOKEN</code></td><td>텔레그램 봇 토큰 (<code>@BotFather</code>에서 발급)</td></tr>
+        <tr><td><code>TELEGRAM_BOT_TOKEN</code></td><td>텔레그램 봇 토큰 (<code>@BotFather</code>에서 발급)</td></tr>
         <tr><td><code>GEMINI_API_KEY</code></td><td><a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent-light)">Google AI Studio</a>에서 발급한 API 키</td></tr>
       </tbody>
     </table>
