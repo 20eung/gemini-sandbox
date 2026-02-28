@@ -9,65 +9,101 @@
 
 ---
 
+## 원본 출처
+
+이 프로젝트는 **코드깎는노인** 유튜버의 Claude Code EC2 설정 가이드를 기반으로,
+동일한 사용자 경험을 **Gemini CLI**에서 구현한 것입니다.
+
+- 원본 가이드: [cokacdir EC2 설정 문서](https://cokacdir.cokac.com/#/ec2)
+- 원본 유튜버: [코드깎는노인](https://www.youtube.com/@kstost)
+- 원본 스크립트: [kstost/service-setup-cokacdir](https://github.com/kstost/service-setup-cokacdir)
+
+> 원본은 Claude Code + cokacdir 기반입니다. 이 저장소는 동일 구조로 Gemini CLI를 연동합니다.
+
+---
+
 ## 원클릭 설치 (로컬에서 실행)
 
 > 아래 변수들을 설정하고 환경에 맞는 명령어를 실행하면 EC2에 자동으로 설치됩니다.
 
-### 옵션 1: 개인/일반 사용자 (API 키 방식)
+### macOS / Linux
 
 ```bash
 export PEM=~/Downloads/my-key.pem
 export IP=13.124.xxx.xxx
-export GEMINI_KEY=your_gemini_api_key_here
 export TOKEN=1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR
+export GEMINI_API_KEY=your_gemini_api_key_here
 export URL=https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/main/basic_setup_ec2_gemini.sh
-ssh -t -i "$PEM" ubuntu@$IP "bash -ic \"export GEMINI_API_KEY='$GEMINI_KEY' TELEGRAM_BOT_TOKEN='$TOKEN'; bash <(curl -sL $URL) && source ~/.bashrc && gemini\""
+
+ssh -t -i "$PEM" ubuntu@$IP \
+  "TELEGRAM_BOT_TOKEN=$TOKEN GEMINI_API_KEY=$GEMINI_API_KEY bash -ic \"source <(curl -sL $URL) && gemini\""
 ```
 
-### 옵션 2: 기업용 사용자 (Vertex AI 방식)
+### Windows (PowerShell)
 
-```bash
-export PEM=~/Downloads/my-key.pem
-export IP=13.124.xxx.xxx
-export PROJECT_ID=your-gcp-project-id
-export TOKEN=1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR
-export URL=https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/main/basic_setup_ec2_gemini.sh
-ssh -t -i "$PEM" ubuntu@$IP "bash -ic \"export GOOGLE_GENAI_USE_VERTEXAI='true' GOOGLE_CLOUD_PROJECT='$PROJECT_ID' TELEGRAM_BOT_TOKEN='$TOKEN'; bash <(curl -sL $URL) && source ~/.bashrc && gemini\""
+```powershell
+$PEM = "my-key.pem"
+$IP = "13.124.xxx.xxx"
+$TOKEN = "1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR"
+$GEMINI_API_KEY = "your_gemini_api_key_here"
+$URL = "https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/main/basic_setup_ec2_gemini.sh"
+
+ssh -t -i $PEM ubuntu@$IP `
+  "TELEGRAM_BOT_TOKEN=$TOKEN GEMINI_API_KEY=$GEMINI_API_KEY bash -ic 'source <(curl -sL $URL) && gemini'"
 ```
 
-| 변수         | 설명                                           |
-| ------------ | ---------------------------------------------- |
-| `PEM`        | EC2 접속용 PEM 키파일 경로                     |
-| `IP`         | EC2 인스턴스 공인 IP                           |
-| `GEMINI_KEY` | (옵션 1 전용) Google AI Studio 또는 GCP API 키 |
-| `PROJECT_ID` | (옵션 2 전용) GCP 프로젝트 ID                  |
-| `TOKEN`      | 텔레그램 봇 토큰 (`@BotFather`에서 발급)       |
+| 변수              | 설명                                          |
+| ----------------- | --------------------------------------------- |
+| `PEM`             | EC2 접속용 PEM 키파일 경로                    |
+| `IP`              | EC2 인스턴스 공인 IP                          |
+| `TOKEN`           | 텔레그램 봇 토큰 (`@BotFather`에서 발급)      |
+| `GEMINI_API_KEY`  | [Google AI Studio](https://aistudio.google.com/apikey)에서 발급한 API 키 |
 
 > Amazon Linux를 사용하는 경우 `ubuntu@$IP` → `ec2-user@$IP` 로 변경하세요.
+
+---
+
+## 설치 완료 후 추가 작업
+
+SSH 명령 실행 후 Gemini CLI 인증이 완료되면:
+
+```bash
+# 1. cokacdir 텔레그램 봇 설정
+npx -y service-setup-cokacdir <YOUR_BOT_TOKEN>
+
+# 2. 그룹 채팅 사용 시 — BotFather Privacy Mode OFF
+# @BotFather → /mybots → Bot Settings → Group Privacy → Turn off
+```
 
 ---
 
 ## 전체 아키텍처
 
 ```
-📱 텔레그램 앱  ──►  🤖 텔레그램 봇  ──►  ☁️ EC2 인스턴스
-사용자                 메시지 중계            AI 샌드박스
-                                                  │
-                                             ✨ Gemini CLI
-                                             AI 처리 + 응답
+📱 텔레그램 앱  ──►  🤖 cokacdir 봇  ──►  ☁️ EC2 인스턴스
+사용자               메시지 중계            AI 샌드박스
+                                                │
+                                        claude shim v4
+                                        (~/.local/bin/claude)
+                                                │
+                                         ✨ Gemini CLI
+                                         (--yolo, stream-json)
+                                                │
+                                    GEMINI.md + skills/*.md
 ```
 
-사용자가 텔레그램으로 메시지를 보내면 EC2의 Gemini CLI가 AI 응답을 생성하여 텔레그램으로 회신합니다.
+사용자가 텔레그램으로 메시지를 보내면 cokacdir가 claude shim을 호출하고,
+shim이 Gemini CLI로 AI 응답을 생성하여 텔레그램으로 회신합니다.
 
 ---
 
 ## 준비물 3가지
 
-| #   | 항목                    | 설명                                                | 예시                   |
-| --- | ----------------------- | --------------------------------------------------- | ---------------------- |
-| 1   | 🌐 **EC2 공인 IP**      | AWS 콘솔에서 확인하는 EC2 인스턴스의 공인 IPv4 주소 | `13.124.xxx.xxx`       |
-| 2   | 🔑 **PEM 키파일**       | EC2 인스턴스 생성 시 다운로드한 `.pem` 키파일       | `my-key.pem`           |
-| 3   | 📱 **텔레그램 봇 토큰** | `@BotFather`에서 발급한 봇 토큰                     | `1234567890:AABBcc...` |
+| #   | 항목                    | 설명                                                        | 예시                   |
+| --- | ----------------------- | ----------------------------------------------------------- | ---------------------- |
+| 1   | 🌐 **EC2 공인 IP**      | AWS 콘솔에서 확인하는 EC2 인스턴스의 공인 IPv4 주소         | `13.124.xxx.xxx`       |
+| 2   | 🔑 **PEM 키파일**       | EC2 인스턴스 생성 시 다운로드한 `.pem` 키파일               | `my-key.pem`           |
+| 3   | 📱 **텔레그램 봇 토큰** | `@BotFather`에서 발급한 봇 토큰                             | `1234567890:AABBcc...` |
 
 > **텔레그램 봇 토큰 발급**: 텔레그램 앱 → `@BotFather` 검색 → `/newbot` → 봇 이름 설정 → 토큰 발급
 
@@ -75,17 +111,16 @@ ssh -t -i "$PEM" ubuntu@$IP "bash -ic \"export GOOGLE_GENAI_USE_VERTEXAI='true' 
 
 ## 설치 구성 요소
 
-| 구성 요소                          | 역할                                   |
-| ---------------------------------- | -------------------------------------- |
-| 스왑 메모리 16GB                   | 소형 EC2 인스턴스 메모리 보완          |
-| cokacdir                           | `cd` 명령 개선 (마지막 디렉토리 기억)  |
-| NVM v0.40.1 + Node.js 24           | Gemini CLI 실행 환경                   |
-| Gemini CLI (`@google/gemini-cli`)  | Google AI 코딩 어시스턴트              |
-| Playwright (`@playwright/cli`)     | 브라우저 자동화 엔진                   |
-| Playwright MCP (`@playwright/mcp`) | Gemini CLI 웹 탐색 연동                |
-| claude→gemini 브릿지               | cokacdir 호환 래퍼 (Claude CLI 에뮬레이션) |
-| 내장형 텔레그램 봇 (Node.js)       | 텔레그램 메시지를 Gemini CLI로 중계    |
-| systemd 서비스 (`gemini-bot`)      | 봇 상시 실행 및 재부팅 시 자동 시작    |
+| 구성 요소                         | 역할                                       |
+| --------------------------------- | ------------------------------------------ |
+| 스왑 메모리 16GB                  | 소형 EC2 인스턴스 메모리 보완              |
+| cokacdir                          | 텔레그램 봇 + 파일 매니저 + 스케줄러       |
+| NVM v0.40.1 + Node.js 24          | Gemini CLI 실행 환경                       |
+| Gemini CLI (`@google/gemini-cli`) | Google AI 코딩 어시스턴트                  |
+| Playwright (`@playwright/cli`)    | 헤드리스 브라우저 자동화                   |
+| claude shim v4                    | cokacdir → Gemini CLI 브릿지 (스트리밍/세션/스킬 지원) |
+| GEMINI.md                         | Gemini CLI 시스템 프롬프트 (한국어, 텔레그램 포맷) |
+| skills 파일 4개                   | `/pdca`, `/code-review`, `/web`, `/playwright` 커맨드 컨텍스트 |
 
 ---
 
@@ -101,9 +136,14 @@ ssh -i ~/Downloads/my-key.pem ubuntu@<EC2_PUBLIC_IP>
 git clone https://github.com/20eung/gemini-sandbox.git
 cd gemini-sandbox
 
-# 3. 환경변수 파일 준비
+# 3. 환경변수 설정 (둘 중 하나 방법으로)
+#    방법 A: .env 파일 생성
 cp .env.sample .env
 nano .env  # GEMINI_API_KEY, TELEGRAM_BOT_TOKEN 입력
+
+#    방법 B: 환경변수 직접 설정
+export GEMINI_API_KEY="your_key_here"
+export TELEGRAM_BOT_TOKEN="your_token_here"
 
 # 4. 실행 권한 부여 후 설치
 chmod +x basic_setup_ec2_gemini.sh
@@ -112,29 +152,30 @@ chmod +x basic_setup_ec2_gemini.sh
 # 5. 환경변수 재로드
 source ~/.bashrc
 
-# 6. Gemini CLI 시작 (텔레그램 봇은 systemd 서비스로 자동 실행됨)
+# 6. Gemini CLI 인증
 gemini
+
+# 7. cokacdir 텔레그램 봇 설정
+npx -y service-setup-cokacdir $TELEGRAM_BOT_TOKEN
 ```
 
 ---
 
 ## 설치 단계 상세
 
-| 단계                    | 내용                                                             | 비고                              |
-| ----------------------- | ---------------------------------------------------------------- | --------------------------------- |
-| [0] `.env` 로드         | 스크립트 위치 또는 홈 디렉토리에서 `.env` 자동 로드              | 없으면 env 변수 직접 사용         |
-| [1] 스왑 설정           | 16GB 스왑 파일 생성                                              | 이미 존재하면 건너뜀 (idempotent) |
-| [2] cokacdir            | `cd` 명령 개선 도구 설치                                         | 이미 설치되면 건너뜀              |
-| [3] NVM + Node.js 24    | NVM v0.40.1 설치 후 Node.js 24 활성화                            | 서브쉘 버그 수정됨                |
-| [4] Gemini CLI          | `npm install -g @google/gemini-cli`                              | 이미 설치되면 건너뜀              |
-| [4.5] 환경변수 보정     | 현재 환경에 없는 변수를 `.bashrc`에서 추출                       | TELEGRAM_BOT_TOKEN, API 키 등     |
-| [5] API 키 등록         | `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`을 `~/.bashrc`에 영구 등록 | 중복 등록 방지                    |
-| [6] Playwright          | 아키텍처 감지 후 브라우저 설치                                   | x86_64→chrome, ARM→chromium       |
-| [7] Playwright MCP      | `@playwright/mcp` 설치 + `~/.gemini/settings.json` 생성         | Gemini CLI 웹 탐색 활성화         |
-| [8] claude→gemini 브릿지 | cokacdir 호환 Python 래퍼 생성 (`~/.local/bin/claude`)           | Claude CLI 인터페이스 에뮬레이션  |
-| [9] PATH 확인           | `~/.local/bin` 경로 `.bashrc` 등록                               | 중복 방지                         |
-| [10] 텔레그램 봇        | 내장형 Node.js 텔레그램 봇 생성                                  | Gemini CLI 응답을 텔레그램으로 전달 |
-| [11] systemd 서비스     | `gemini-bot.service` 등록 및 시작                                | 재부팅 시 자동 시작, 크래시 자동 복구 |
+| 단계                     | 내용                                                               | 비고                              |
+| ------------------------ | ------------------------------------------------------------------ | --------------------------------- |
+| [0] `.env` 로드          | 스크립트 위치 또는 홈 디렉토리에서 `.env` 자동 로드                | 없으면 env 변수 직접 사용         |
+| [1] 스왑 설정            | 16GB 스왑 파일 생성                                                | 이미 존재하면 건너뜀 (idempotent) |
+| [2] cokacdir             | 텔레그램 봇 설치 (user systemd 서비스 자동 등록)                   | 이미 설치되면 건너뜀              |
+| [3] NVM + Node.js 24     | NVM v0.40.1 설치 후 Node.js 24 활성화                              | NVM/Node 각각 개별 체크           |
+| [4] Gemini CLI           | `npm install -g @google/gemini-cli`                                | 이미 설치되면 건너뜀              |
+| [4.5] 환경변수 보정      | 현재 환경에 없는 변수를 `.bashrc`에서 추출                         | TELEGRAM_BOT_TOKEN, API 키 등     |
+| [5] 환경변수 등록        | `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`을 `~/.bashrc`에 영구 등록  | 변수별 개별 중복 체크             |
+| [6] Playwright 의존성    | 시스템 패키지 설치                                                 | Ubuntu 24(t64) / 이전 버전 fallback |
+| [7] playwright-cli       | 브라우저 설치 (ARCH별 분기), AppArmor 제한 해제                    | x86_64→chrome, ARM→chromium+symlink |
+| [8] claude shim v4       | cokacdir → Gemini CLI 브릿지 생성 (`~/.local/bin/claude`)          | 구버전 자동 백업 후 v4 설치       |
+| [9] GEMINI.md + skills   | 시스템 프롬프트 + 스킬 파일 4개 설치                               | 각 파일별 존재 체크               |
 
 ### 아키텍처별 브라우저
 
@@ -147,8 +188,6 @@ gemini
 
 ## 설치 후 확인
 
-설치 완료 후 아래 명령으로 각 구성 요소를 확인합니다.
-
 ```bash
 # 환경변수 재로드 (필수)
 source ~/.bashrc
@@ -160,10 +199,14 @@ playwright-cli --version # Playwright 버전
 cokacdir --version       # cokacdir 버전
 swapon --show            # 스왑 확인
 
-# API 키 확인
-echo $GEMINI_API_KEY     # 키 값 출력 확인
+# claude shim v4 확인
+head -3 ~/.local/bin/claude   # "Bridge v4" 문구 확인
 
-# Gemini CLI 실행
+# GEMINI.md 및 skills 확인
+ls ~/.gemini/GEMINI.md
+ls ~/.gemini/skills/
+
+# Gemini CLI 시작
 gemini
 ```
 
@@ -171,9 +214,9 @@ gemini
 
 ## 텔레그램 봇 연동
 
-Gemini CLI 설치가 완료되면 텔레그램 봇을 연결하여 어디서나 AI와 소통할 수 있습니다.
+Gemini CLI 설치가 완료되면 cokacdir로 텔레그램 봇을 연결합니다.
 
-> EC2 서버가 24시간 실행 중이므로 텔레그램 앱이 있는 어떤 기기(모바일, 데스크톱, 태블릿)에서도 Gemini AI와 대화할 수 있습니다.
+> EC2 서버가 24시간 실행 중이므로 텔레그램 앱이 있는 어떤 기기에서도 Gemini AI와 대화할 수 있습니다.
 
 ### 1단계: 텔레그램 봇 토큰 발급
 
@@ -181,105 +224,101 @@ Gemini CLI 설치가 완료되면 텔레그램 봇을 연결하여 어디서나 
 2. `/newbot` 명령 입력
 3. 봇 표시 이름 입력 (예: `My Gemini AI`)
 4. 봇 사용자명 입력 (예: `my_gemini_bot`, 반드시 `bot`으로 끝나야 함)
-5. 발급된 토큰 복사 → `.env`의 `TELEGRAM_BOT_TOKEN`에 저장
+5. 발급된 토큰 복사
 
-> **봇 채팅 ID 확인**: 봇에게 메시지를 보낸 후 `https://api.telegram.org/bot<TOKEN>/getUpdates`를 브라우저에서 열면 `chat.id` 값을 확인할 수 있습니다.
-
-### 2단계: 환경변수에 봇 토큰 등록
-
-`.env` 파일에 토큰이 있으면 설치 스크립트가 자동으로 등록합니다. 수동 등록이 필요한 경우:
+### 2단계: cokacdir 봇 설정
 
 ```bash
-echo 'export TELEGRAM_BOT_TOKEN="your_token_here"' >> ~/.bashrc
-source ~/.bashrc
-
-# 확인
-echo $TELEGRAM_BOT_TOKEN
+npx -y service-setup-cokacdir <YOUR_BOT_TOKEN>
 ```
 
-### 3단계: 봇 연동 테스트
+### 3단계: 그룹 채팅 설정 (선택)
+
+그룹에서 봇을 사용하려면 BotFather에서 Privacy Mode를 끄세요:
+
+```
+@BotFather → /mybots → [봇 선택] → Bot Settings → Group Privacy → Turn off
+```
+
+### 4단계: 봇 연동 테스트
 
 1. 텔레그램 앱에서 생성한 봇 검색 → 대화 시작
-2. 메시지 전송: _"안녕, 오늘 날씨 어때?"_
-3. EC2의 Gemini CLI가 처리 후 답변 전송 확인
-4. Playwright MCP 활성화 시 웹 검색도 가능
+2. 메시지 전송: _"안녕, 자기소개 해줘"_
+3. Gemini AI가 응답하면 연동 성공
 
-> **내부 동작**: 설치 스크립트는 `cokacdir`이 호출하는 `claude` 명령을 `gemini --yolo`로 연결하는 래퍼를 자동으로 생성합니다. `--yolo` 플래그는 비대화형(non-TTY) 환경에서 도구 실행 확인을 자동 승인합니다.
+> **내부 동작**: cokacdir가 `claude` 명령을 호출하면 claude shim v4가 Gemini CLI로 연결합니다.
+> `--yolo` 플래그로 비대화형 환경에서 도구 실행을 자동 승인합니다.
 
 ---
 
-## Playwright MCP 설정
+## 지원 커맨드 (`/help`)
 
-Claude Code와 달리 Gemini CLI는 Playwright가 내장되어 있지 않습니다. MCP 서버 방식으로 연동합니다.
+텔레그램에서 `/help`를 입력하면 다음 커맨드 목록이 표시됩니다:
 
-스크립트가 자동으로 `~/.gemini/settings.json`을 생성합니다:
-
-```json
-{
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": ["@playwright/mcp"]
-    }
-  }
-}
-```
+| 커맨드 | 설명 |
+| ------ | ---- |
+| 자유 대화 | 무엇이든 질문 |
+| `/pdca plan [기능명]` | PDCA 계획 문서 작성 |
+| `/pdca design [기능명]` | 설계 문서 작성 |
+| `/pdca analyze [기능명]` | 설계↔구현 갭 분석 |
+| `/pdca status` | 현재 PDCA 상태 확인 |
+| `/code-review [파일]` | 코드 품질 리뷰 |
+| `/web [URL]` | 웹 페이지 내용 분석 |
+| 스케줄 | `"N분 후에 [작업]해줘"` 형태로 자연어 등록 |
+| 파일 전송 | 파일 생성 후 텔레그램으로 자동 전송 |
 
 ---
 
 ## GEMINI.md 설정
 
-Claude Code의 `CLAUDE.md`처럼, Gemini CLI는 `GEMINI.md` 파일을 프로젝트 컨텍스트로 사용합니다.
-프로젝트 루트의 `GEMINI.md`가 자동으로 로드됩니다.
+Claude Code의 `CLAUDE.md`처럼, Gemini CLI는 `GEMINI.md` 파일을 시스템 프롬프트로 사용합니다.
+스크립트가 `~/.gemini/GEMINI.md`를 자동으로 설치하며 다음 내용이 포함됩니다:
+
+- 텔레그램 Markdown 포맷 규칙 (HTML 태그 미지원 대응)
+- `/help` 응답 템플릿
+- `/pdca`, `/code-review`, `/web` 커맨드 처리 방법
+- 현재 서버 환경 정보 (Node.js 경로, Gemini CLI 경로)
 
 ---
 
 ## 인증 설정
 
-환경에 따라 **API 키 방식** 또는 **Vertex AI 방식** 중 하나를 선택하여 설정합니다.
+### API 키 방식 (권장)
 
-### 1. API 키 방식 (개인/일반 사용자 권장)
-
-Google AI Studio에서 발급받은 API 키를 사용합니다.
+[Google AI Studio](https://aistudio.google.com/apikey)에서 발급받은 API 키를 사용합니다.
 
 ```bash
-# API 키 방식
 export GEMINI_API_KEY="your_api_key_here"
 ```
 
-### 2. Vertex AI 방식 (Google Workspace / 기업용 사용자)
-
-GCP 프로젝트를 통해 Vertex AI API를 사용합니다.
+### Vertex AI 방식 (기업용, 추후 지원 예정)
 
 ```bash
-# Vertex AI 방식
 export GOOGLE_GENAI_USE_VERTEXAI=true
 export GOOGLE_CLOUD_PROJECT="your-project-id"
 ```
 
-> [!IMPORTANT]
-> **OAuth 방식은 사용하지 마세요.** 서버 환경에 부적합하며 세션이 만료될 수 있습니다. 반드시 위 두 방식 중 하나를 사용하세요.
-
-> **EC2 서버 사용 가능 여부**: Google Gemini API 이용약관상 API 키를 통한 서버 사용은 허용됩니다.
+> **현재 스크립트는 API 키 방식만 지원합니다.** Vertex AI 방식은 추후 추가될 예정입니다.
 
 ---
 
 ## Claude Code와 비교
 
-| 기능                | Claude Code (기존)   | Gemini CLI (이 가이드)      |
-| ------------------- | -------------------- | --------------------------- |
-| AI 모델             | Claude (AWS Bedrock) | Gemini (GCP API)            |
-| 인증                | AWS Bedrock IAM      | GEMINI_API_KEY              |
-| 파일 읽기/쓰기      | ✅                   | ✅                          |
-| 쉘 명령 실행        | ✅                   | ✅                          |
-| 웹 검색             | ✅                   | ✅ (Google Search 내장)     |
-| Playwright 브라우저 | 내장                 | MCP 서버 (자동 설정)        |
-| 컨텍스트 파일       | `CLAUDE.md`          | `GEMINI.md`                 |
-| 설치 스크립트       | `basic_setup_ec2.sh` | `basic_setup_ec2_gemini.sh` |
-| 라이선스            | 상용                 | Apache 2.0 (오픈소스)       |
-| 설치 방식           | 원클릭 (로컬 실행)   | 원클릭 (로컬 실행)          |
-| NVM 버그 수정       | 미수정               | 수정됨                      |
-| 스왑 중복 방지      | 미적용               | 적용됨                      |
+| 기능                | Claude Code (원본)          | Gemini CLI (이 가이드)      |
+| ------------------- | --------------------------- | --------------------------- |
+| AI 모델             | Claude (Anthropic)          | Gemini (Google)             |
+| 인증                | OAuth / API 키              | GEMINI_API_KEY              |
+| 파일 읽기/쓰기      | ✅                          | ✅                          |
+| 쉘 명령 실행        | ✅                          | ✅                          |
+| 웹 검색             | ✅                          | ✅ (Google Search 내장)     |
+| 브라우저 자동화     | ✅ 내장                     | ✅ playwright-cli           |
+| 컨텍스트 파일       | `CLAUDE.md`                 | `GEMINI.md`                 |
+| 텔레그램 봇         | cokacdir                    | cokacdir + claude shim v4   |
+| 설치 스크립트       | `basic_setup_ec2.sh`        | `basic_setup_ec2_gemini.sh` |
+| 설치 방식           | 원클릭 (로컬 실행)          | 원클릭 (로컬 실행)          |
+| Shell `!command`    | ✅                          | ⚠️ cokacdir 구조적 제한     |
+
+> ⚠️ Shell 직접 실행(`!ls` 등)은 cokacdir 바이너리 구조상 구현 불가합니다.
 
 ---
 
@@ -293,40 +332,33 @@ export GOOGLE_CLOUD_PROJECT="your-project-id"
 
 ## 보안 고려 사항
 
-- **명령 주입 방지**: 텔레그램 봇은 사용자 입력을 `execFileSync`의 `input` 옵션으로 전달합니다. 쉘을 경유하지 않으므로 `$()`, 백틱 등을 통한 명령 주입이 차단됩니다.
-- **`--yolo` 모드 주의**: claude→gemini 브릿지는 `--yolo` 플래그로 Gemini CLI의 도구 사용을 자동 승인합니다. 텔레그램 봇이 외부에 노출되므로 **신뢰할 수 있는 사용자만 접근할 수 있도록** 봇 접근 제한을 설정하세요.
-- **환경변수 파일 보호**: systemd 환경변수 파일(`/etc/systemd/system/gemini-bot.env`)은 `chmod 600`으로 보호됩니다. API 키와 봇 토큰이 포함되어 있으므로 권한을 변경하지 마세요.
+- **`--yolo` 모드 주의**: claude shim은 `--yolo` 플래그로 Gemini CLI의 도구 사용을 자동 승인합니다. 텔레그램 봇이 외부에 노출되므로 **신뢰할 수 있는 사용자만 접근할 수 있도록** 봇 접근 제한을 설정하세요.
+- **환경변수 보호**: `GEMINI_API_KEY`와 `TELEGRAM_BOT_TOKEN`은 `~/.bashrc`에 저장됩니다. EC2 인스턴스 접근 제한을 통해 보호하세요.
 
 ---
 
 ## FAQ
 
 **Q. EC2 서버에서 Gemini CLI를 사용해도 계정이 정지되나요?**
-아니요. **API 키 방식**으로 사용하면 Google Gemini API 이용약관상 서버 사용이 허용됩니다. 계정 정지 사례는 Gemini가 아닌 Anthropic Claude의 OAuth 남용에서 발생했습니다.
-
-**Q. OAuth(Google 계정 로그인) 방식은 EC2에서 사용 가능한가요?**
-사용하지 마세요. OAuth 방식은 브라우저가 필요하며 서버 환경에 부적합합니다. 반드시 **API 키 방식**(`GEMINI_API_KEY`)을 사용하세요.
+아니요. **API 키 방식**으로 사용하면 Google Gemini API 이용약관상 서버 사용이 허용됩니다.
 
 **Q. ARM(aarch64) EC2에서도 Playwright가 동작하나요?**
 예. ARM 환경에서는 chromium 채널을 설치하고 `/opt/google/chrome/chrome`으로 symlink를 자동 생성합니다.
 
-**Q. Claude Code와 Gemini CLI를 같은 EC2에서 함께 사용할 수 있나요?**
-예. `.env` 파일에 두 설정을 모두 저장하고, 필요에 따라 `claude` 또는 `gemini` 명령을 선택하여 사용하면 됩니다.
-
 **Q. 스크립트 재실행이 안전한가요?**
-예. 각 단계에서 이미 설치된 경우 건너뜁니다 (idempotent). 스왑 파일 생성, NVM 설치, Gemini CLI 설치 모두 중복 실행 시 안전합니다.
+예. 각 단계에서 이미 설치된 경우 건너뜁니다 (idempotent). 모든 단계에 SKIP 처리가 적용되어 있습니다.
+
+**Q. 텔레그램 봇이 응답하지 않을 경우 어떻게 하나요?**
+1. `systemctl --user status cokacdir.service` 로 cokacdir 상태 확인
+2. `TELEGRAM_BOT_TOKEN` 환경변수가 올바르게 설정되어 있는지 확인
+3. EC2 보안 그룹에서 아웃바운드 연결(HTTPS 443)이 허용되어 있는지 확인
+4. `/tmp/claude-gemini.log` 에서 claude shim 로그 확인
 
 **Q. 텔레그램 봇 토큰이 없으면 사용할 수 없나요?**
 설치 자체는 토큰 없이도 진행됩니다. 하지만 텔레그램을 통한 원격 AI 소통을 위해서는 봇 토큰이 필요합니다. `@BotFather`에서 무료로 발급 가능합니다.
 
-**Q. 텔레그램 봇이 응답하지 않을 경우 어떻게 하나요?**
-
-1. EC2 인스턴스가 실행 중인지 확인
-2. `TELEGRAM_BOT_TOKEN` 환경변수가 올바르게 설정되어 있는지 확인
-3. EC2 보안 그룹에서 아웃바운드 연결(HTTPS 443)이 허용되어 있는지 확인
-
-**Q. Claude Code와 Gemini CLI를 텔레그램 봇 하나로 같이 사용할 수 있나요?**
-구현 방식에 따라 가능합니다. 봇 명령어로 AI를 전환하도록 설정할 수 있습니다. 예: `/gemini` → Gemini CLI, `/claude` → Claude Code 사용.
+**Q. Claude Code와 Gemini CLI를 같은 EC2에서 함께 사용할 수 있나요?**
+예. `.env` 파일에 두 설정을 모두 저장하고, 필요에 따라 선택하여 사용하면 됩니다.
 
 ---
 
@@ -334,5 +366,6 @@ export GOOGLE_CLOUD_PROJECT="your-project-id"
 
 - [Gemini CLI GitHub](https://github.com/google-gemini/gemini-cli)
 - [Google AI Studio (API 키 발급)](https://aistudio.google.com/apikey)
-- [Claude Code EC2 설명서](https://cokacdir.cokac.com/#/ec2) (원본 Claude Code 버전)
+- [원본 가이드 — cokacdir EC2 설정 (코드깎는노인)](https://cokacdir.cokac.com/#/ec2)
+- [원본 저장소 — kstost/service-setup-cokacdir](https://github.com/kstost/service-setup-cokacdir)
 - HTML 상세 설명서: [`docs/ec2-gemini.html`](docs/ec2-gemini.html)
