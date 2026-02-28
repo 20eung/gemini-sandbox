@@ -88,4 +88,4 @@ npx -y service-setup-cokacdir <YOUR_BOT_TOKEN>
 - [Gemini CLI GitHub](https://github.com/google-gemini/gemini-cli)
 - [Google AI Studio (API 키 발급)](https://aistudio.google.com/apikey)
 - [원본 가이드 — cokacdir EC2 설정 (코드깎는노인)](https://cokacdir.cokac.com/#/ec2)
-- 상세 설명서: [ec2-gemini.html](ec2-gemini.html)
+- 상세 설명서: [ec2-gemini.html](ec2-gemini.html) · [GitHub Pages](https://20eung.github.io/gemini-sandbox/ec2-gemini.html)
