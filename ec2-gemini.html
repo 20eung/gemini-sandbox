@@ -802,6 +802,22 @@ nvm install 24 && nvm use 24</code></pre>
         </div>
       </div>
 
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">10</div>
+          <span class="step-title">cokacdir 텔레그램 봇 서비스 등록</span>
+          <span class="step-badge badge-same">SKIP: cokacdir.service 존재 시</span>
+        </div>
+        <div class="step-body">
+          <p class="step-desc"><code>npx -y service-setup-cokacdir</code>를 자동 실행하여 cokacdir를 user systemd 서비스로 등록합니다. <code>TELEGRAM_BOT_TOKEN</code>이 설정된 경우에만 실행되며, 미설정 시 수동 실행 안내가 표시됩니다.</p>
+          <ul class="checklist">
+            <li>서비스 파일 생성: <code>~/.config/systemd/user/cokacdir.service</code></li>
+            <li>부팅 시 자동 시작 (linger 활성화)</li>
+            <li><code>TELEGRAM_BOT_TOKEN</code> 미설정 시 → <code>[WARN]</code> 후 수동 실행 안내</li>
+          </ul>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -867,16 +883,20 @@ systemctl --user status cokacdir.service</code></pre>
       <div class="step">
         <div class="step-header">
           <div class="step-num">2</div>
-          <span class="step-title">cokacdir 봇 설정</span>
+          <span class="step-title">cokacdir 봇 서비스 확인</span>
         </div>
         <div class="step-body">
-          <p class="step-desc">Gemini CLI 인증 완료 후 텔레그램 봇을 연결합니다.</p>
+          <p class="step-desc">설치 스크립트 [10] 단계에서 자동으로 서비스가 등록됩니다. 정상 실행 여부를 확인하세요.</p>
           <div class="code-wrap">
             <div class="code-header">
               <span class="code-lang">bash</span>
               <button class="copy-btn" onclick="copyCode(this)">복사</button>
             </div>
-            <pre><code>npx -y service-setup-cokacdir <span class="cv">&lt;YOUR_BOT_TOKEN&gt;</span></code></pre>
+            <pre><code>systemctl --user status cokacdir.service</code></pre>
+          </div>
+          <div class="callout callout-tip" style="margin-top: 12px;">
+            <span class="callout-icon">💡</span>
+            <div class="callout-text"><code>TELEGRAM_BOT_TOKEN</code> 미설정으로 자동 등록이 안 된 경우 수동 실행:<br><code>npx -y service-setup-cokacdir &lt;YOUR_BOT_TOKEN&gt;</code></div>
           </div>
         </div>
       </div>

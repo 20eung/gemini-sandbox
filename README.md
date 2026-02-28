@@ -71,13 +71,10 @@ ssh -t -i $PEM ubuntu@$IP `
 
 ## 설치 완료 후 추가 작업
 
-Gemini CLI 인증이 완료되면:
+SSH 명령 실행 후 Gemini CLI 인증만 완료하면 봇이 동작합니다.
 
 ```bash
-# 1. cokacdir 텔레그램 봇 설정
-npx -y service-setup-cokacdir <YOUR_BOT_TOKEN>
-
-# 2. 그룹 채팅 사용 시 — BotFather Privacy Mode OFF
+# 그룹 채팅 사용 시 — BotFather Privacy Mode OFF
 # @BotFather → /mybots → Bot Settings → Group Privacy → Turn off
 ```
 
