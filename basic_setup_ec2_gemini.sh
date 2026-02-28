@@ -378,22 +378,36 @@ def detect_skill_command(msg):
     return skill_map.get(cmd), args
 
 def parse_file_upload(msg):
-    """cokacdir의 [File uploaded] 메시지를 @ 파일 참조로 변환"""
+    """cokacdir의 [File uploaded] 메시지 또는 파일 경로 직접 입력을 @ 파일 참조로 변환"""
+    # 형식 1: [File uploaded] filename.ext → /path/to/file
     m = re.search(r'\[File uploaded\]\s+\S+\s+→\s+(/\S+)', msg)
-    if not m:
-        return None
-    filepath = m.group(1).strip()
-    caption = msg[m.end():].strip()
-    ext = os.path.splitext(filepath)[1].lower()
-    image_exts = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.tif', '.heic', '.heif'}
-    text_exts  = {'.txt', '.md', '.py', '.js', '.ts', '.json', '.yaml', '.yml', '.csv',
-                  '.html', '.css', '.sh', '.bash', '.pdf'}
-    return {
-        'filepath': filepath, 'caption': caption,
-        'is_image': ext in image_exts,
-        'is_text':  ext in text_exts,
-        'ext': ext,
-    }
+    if m:
+        filepath = m.group(1).strip()
+        caption = msg[m.end():].strip()
+        ext = os.path.splitext(filepath)[1].lower()
+        image_exts = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.tif', '.heic', '.heif'}
+        text_exts  = {'.txt', '.md', '.py', '.js', '.ts', '.json', '.yaml', '.yml', '.csv',
+                      '.html', '.css', '.sh', '.bash', '.pdf'}
+        return {
+            'filepath': filepath, 'caption': caption,
+            'is_image': ext in image_exts,
+            'is_text':  ext in text_exts,
+            'ext': ext,
+        }
+    # 형식 2: /절대경로/파일.ext 설명텍스트 (사용자가 파일 경로를 직접 입력)
+    m2 = re.match(r'(/\S+\.(jpg|jpeg|png|gif|webp|bmp|tiff|tif|heic|heif|pdf|txt|md|py|js|ts|json|yaml|yml|csv|html|css|sh))\s*(.*)', msg, re.IGNORECASE)
+    if m2 and os.path.isfile(m2.group(1)):
+        filepath = m2.group(1)
+        caption = m2.group(3).strip()
+        ext = os.path.splitext(filepath)[1].lower()
+        image_exts = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.tif', '.heic', '.heif'}
+        return {
+            'filepath': filepath, 'caption': caption,
+            'is_image': ext in image_exts,
+            'is_text':  ext not in image_exts,
+            'ext': ext,
+        }
+    return None
 
 def load_skill_context(skill_name):
     """스킬 파일에서 추가 컨텍스트 로드"""
