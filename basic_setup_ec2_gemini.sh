@@ -362,6 +362,24 @@ def detect_skill_command(msg):
     }
     return skill_map.get(cmd), args
 
+def parse_file_upload(msg):
+    """cokacdir의 [File uploaded] 메시지를 @ 파일 참조로 변환"""
+    m = re.search(r'\[File uploaded\]\s+\S+\s+→\s+(/\S+)', msg)
+    if not m:
+        return None
+    filepath = m.group(1).strip()
+    caption = msg[m.end():].strip()
+    ext = os.path.splitext(filepath)[1].lower()
+    image_exts = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.tif', '.heic', '.heif'}
+    text_exts  = {'.txt', '.md', '.py', '.js', '.ts', '.json', '.yaml', '.yml', '.csv',
+                  '.html', '.css', '.sh', '.bash', '.pdf'}
+    return {
+        'filepath': filepath, 'caption': caption,
+        'is_image': ext in image_exts,
+        'is_text':  ext in text_exts,
+        'ext': ext,
+    }
+
 def load_skill_context(skill_name):
     """스킬 파일에서 추가 컨텍스트 로드"""
     if not skill_name:
@@ -439,6 +457,19 @@ def main():
             user_msg = sys.stdin.read().strip()
     except:
         pass
+    # [File uploaded] 처리: @filepath 문법으로 변환하여 멀티모달 지원
+    file_info = parse_file_upload(user_msg)
+    if file_info:
+        filepath = file_info['filepath']
+        caption  = file_info['caption']
+        if file_info['is_image']:
+            user_msg = f'@{filepath} {caption or "이 이미지의 내용을 분석해 주세요."}'
+        elif file_info['is_text']:
+            user_msg = f'@{filepath} {caption or "이 파일의 내용을 분석해 주세요."}'
+        else:
+            user_msg = caption or f'파일이 업로드되었습니다: {os.path.basename(filepath)}'
+        log(f"파일 업로드 감지 ({file_info['ext']}): {filepath}")
+
     log(f"resume={parsed['resume_session_id']}, cwd={parsed['cwd']}, model={parsed['model']}, msg={user_msg[:60]}")
 
     cwd = parsed['cwd'] or os.path.expanduser('~')
