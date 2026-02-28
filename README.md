@@ -26,12 +26,12 @@
 ```bash
 export PEM=~/Downloads/my-key.pem
 export IP=13.124.xxx.xxx
-export TOKEN=1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR
+export TELEGRAM_BOT_TOKEN=1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR
 export GEMINI_API_KEY=your_gemini_api_key_here
 export URL=https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/main/basic_setup_ec2_gemini.sh
 
 ssh -t -i "$PEM" ubuntu@$IP \
-  "TELEGRAM_BOT_TOKEN=$TOKEN GEMINI_API_KEY=$GEMINI_API_KEY bash -ic \"source <(curl -sL $URL) && gemini\""
+  "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN GEMINI_API_KEY=$GEMINI_API_KEY bash -ic \"source <(curl -sL $URL) && gemini\""
 ```
 
 ### Windows (PowerShell)
@@ -39,20 +39,20 @@ ssh -t -i "$PEM" ubuntu@$IP \
 ```powershell
 $PEM = "my-key.pem"
 $IP = "13.124.xxx.xxx"
-$TOKEN = "1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR"
+$TELEGRAM_BOT_TOKEN = "1234567890:AABBccDDeeFFggHHiiJJkkLLmmNNooPPqqRR"
 $GEMINI_API_KEY = "your_gemini_api_key_here"
 $URL = "https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/main/basic_setup_ec2_gemini.sh"
 
 ssh -t -i $PEM ubuntu@$IP `
-  "TELEGRAM_BOT_TOKEN=$TOKEN GEMINI_API_KEY=$GEMINI_API_KEY bash -ic 'source <(curl -sL $URL) && gemini'"
+  "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN GEMINI_API_KEY=$GEMINI_API_KEY bash -ic 'source <(curl -sL $URL) && gemini'"
 ```
 
-| 변수             | 설명                                                                              |
-| ---------------- | --------------------------------------------------------------------------------- |
-| `PEM`            | EC2 접속용 PEM 키파일 경로                                                        |
-| `IP`             | EC2 인스턴스 공인 IP                                                              |
-| `TOKEN`          | 텔레그램 봇 토큰 (`@BotFather`에서 발급)                                          |
-| `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/apikey)에서 발급한 API 키          |
+| 변수                  | 설명                                                                              |
+| --------------------- | --------------------------------------------------------------------------------- |
+| `PEM`                 | EC2 접속용 PEM 키파일 경로                                                        |
+| `IP`                  | EC2 인스턴스 공인 IP                                                              |
+| `TELEGRAM_BOT_TOKEN`  | 텔레그램 봇 토큰 (`@BotFather`에서 발급)                                          |
+| `GEMINI_API_KEY`      | [Google AI Studio](https://aistudio.google.com/apikey)에서 발급한 API 키          |
 
 > Amazon Linux는 `ubuntu@$IP` → `ec2-user@$IP` 로 변경하세요.
 
