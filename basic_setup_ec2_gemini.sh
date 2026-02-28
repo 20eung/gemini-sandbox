@@ -256,7 +256,7 @@ else
 cokacdir → Gemini CLI Bridge v4
 스트리밍, 세션 관리, bkit 노이즈 제거, 모델 선택, SIGTERM 처리, 스킬 디스패치 지원
 """
-import sys, os, subprocess, json, uuid, datetime, re, signal
+import sys, os, subprocess, json, uuid, datetime, re, signal, threading, time
 
 SESSION_MAP_FILE = os.path.expanduser("~/.cokacdir/session_map.json")
 LOG_FILE = "/tmp/claude-gemini.log"
@@ -569,9 +569,34 @@ def main():
         sys.exit(1)
 
     accumulated = ''
+    emitted_len = 0           # 중간 발송 완료된 문자 수
     gemini_session_uuid = None
     final_stats = {}
     line_buf = ''
+    emit_lock = threading.Lock()
+    last_delta_time = [time.time()]
+    finished = [False]
+    PAUSE_SEC = 1.5           # 도구 실행 감지 기준 (초)
+
+    def split_message_thread():
+        """Gemini 도구 실행 중 pause 감지 → 중간 메시지 분리 발송"""
+        nonlocal emitted_len
+        while not finished[0]:
+            time.sleep(0.2)
+            with emit_lock:
+                new_text = accumulated[emitted_len:]
+                if not new_text.strip():
+                    continue
+                if time.time() - last_delta_time[0] < PAUSE_SEC:
+                    continue
+                clean = filter_bkit_noise(new_text, partial=True)
+                if clean:
+                    emit_claude_assistant(clean, response_session_id, is_final=True, model=gemini_model)
+                    log(f"중간 메시지 발송 ({len(clean)}자)")
+                emitted_len = len(accumulated)
+
+    t = threading.Thread(target=split_message_thread, daemon=True)
+    t.start()
 
     try:
         while True:
@@ -594,15 +619,29 @@ def main():
                 gemini_session_uuid = g.get('session_id')
             elif gtype == 'message' and g.get('role') == 'assistant':
                 content = g.get('content', '')
-                if g.get('delta', False): accumulated += content
-                else: accumulated = content
+                with emit_lock:
+                    if g.get('delta', False): accumulated += content
+                    else: accumulated = content
+                    last_delta_time[0] = time.time()
             elif gtype == 'result':
                 final_stats = g.get('stats', {})
-                clean_text = filter_bkit_noise(accumulated, partial=False)
-                emit_claude_assistant(clean_text, response_session_id, is_final=True, model=gemini_model)
-                emit_claude_result(clean_text, response_session_id, final_stats)
+                finished[0] = True
+                t.join(timeout=PAUSE_SEC + 0.5)
+                with emit_lock:
+                    remaining = accumulated[emitted_len:]
+                    if remaining.strip():
+                        clean_text = filter_bkit_noise(remaining, partial=False)
+                    elif emitted_len == 0:
+                        clean_text = filter_bkit_noise(accumulated, partial=False)
+                    else:
+                        clean_text = ''
+                if clean_text:
+                    emit_claude_assistant(clean_text, response_session_id, is_final=True, model=gemini_model)
+                emit_claude_result(filter_bkit_noise(accumulated, partial=False),
+                                   response_session_id, final_stats)
                 log(f"완료. 토큰: {final_stats.get('total_tokens', '?')}")
     except Exception as e:
+        finished[0] = True
         log(f"스트리밍 중 오류: {e}")
 
     process.wait()
