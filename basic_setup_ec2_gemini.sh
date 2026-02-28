@@ -9,11 +9,11 @@ set -e
 # 사용법 (로컬에서 실행):
 #   export PEM=secret.pem
 #   export IP=0.0.0.0
-#   export TOKEN=1234:ABC...
+#   export TELEGRAM_BOT_TOKEN=1234:ABC...
 #   export GEMINI_API_KEY=AIza...
 #   export URL=https://raw.githubusercontent.com/20eung/gemini-sandbox/refs/heads/main/basic_setup_ec2_gemini.sh
 #   ssh -t -i "$PEM" ubuntu@$IP \
-#     "TELEGRAM_BOT_TOKEN=$TOKEN GEMINI_API_KEY=$GEMINI_API_KEY bash -ic \"source <(curl -sL $URL) && gemini\""
+#     "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN GEMINI_API_KEY=$GEMINI_API_KEY bash -ic \"source <(curl -sL $URL) && gemini\""
 # =============================================================
 
 ARCH=$(uname -m)
@@ -875,6 +875,23 @@ sed -i "s|NVM_BIN_PLACEHOLDER|$REAL_NVM_BIN|g" "$GEMINI_CONFIG/skills/playwright
 echo "  [OK] NVM paths updated: $REAL_NVM_BIN"
 
 # -------------------------------------------------------------
+# [10] cokacdir 텔레그램 봇 서비스 등록
+# -------------------------------------------------------------
+echo ""
+echo "[10] Setting up cokacdir Telegram bot service..."
+if [ -f "$HOME/.config/systemd/user/cokacdir.service" ]; then
+    echo "  [SKIP] cokacdir.service already exists"
+else
+    if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
+        npx -y service-setup-cokacdir "$TELEGRAM_BOT_TOKEN"
+        echo "  [OK] cokacdir service registered"
+    else
+        echo "  [WARN] TELEGRAM_BOT_TOKEN not set — run manually after setup:"
+        echo "         npx -y service-setup-cokacdir <YOUR_BOT_TOKEN>"
+    fi
+fi
+
+# -------------------------------------------------------------
 # 완료
 # -------------------------------------------------------------
 echo ""
@@ -887,14 +904,7 @@ echo ""
 echo "1. Gemini CLI 인증 (이 명령 실행 후 자동 시작):"
 echo "   gemini"
 echo ""
-echo "2. cokacdir 텔레그램 봇 설정:"
-if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
-    echo "   npx -y service-setup-cokacdir $TELEGRAM_BOT_TOKEN"
-else
-    echo "   npx -y service-setup-cokacdir <YOUR_BOT_TOKEN>"
-fi
-echo ""
-echo "3. 그룹 채팅 사용 시 — BotFather Privacy Mode OFF:"
+echo "2. 그룹 채팅 사용 시 — BotFather Privacy Mode OFF:"
 echo "   @BotFather → /mybots → Bot Settings → Group Privacy → Turn off"
 echo ""
 echo "설치된 항목:"
@@ -904,4 +914,5 @@ echo "  - claude shim:    ~/.local/bin/claude (v4)"
 echo "  - GEMINI.md:      ~/.gemini/GEMINI.md"
 echo "  - skills:         ~/.gemini/skills/ (pdca, code-review, web, playwright)"
 echo "  - playwright-cli: $(playwright-cli --version 2>/dev/null || echo 'installed')"
+echo "  - cokacdir svc:   $(systemctl --user is-active cokacdir.service 2>/dev/null || echo 'check manually')"
 echo ""
