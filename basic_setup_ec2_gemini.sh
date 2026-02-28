@@ -398,6 +398,11 @@ def parse_cokacdir_args(args):
             result['allowed_tools'] = args[i + 1].split(','); i += 2
         else:
             i += 1
+    # --cwd 미전달 시 system prompt에서 추출
+    if not result['cwd'] and result['system_prompt']:
+        m = re.search(r'Current working directory: (/[^\n\\]+)', result['system_prompt'])
+        if m:
+            result['cwd'] = m.group(1).strip()
     return result
 
 def emit_claude_init(session_id, cwd, model='gemini-3.1-pro-preview'):
