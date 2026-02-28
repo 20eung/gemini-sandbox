@@ -515,6 +515,11 @@ def main():
     if skill_name:
         log(f"스킬 감지: /{skill_name} (args: {skill_args[:30]})")
 
+    # cokacdir 시스템 프롬프트가 영문이므로 한국어 응답 강제 지시 추가
+    LANG_HINT = "\n\n[언어 규칙] 분석 대상 코드/파일이 영어여도 반드시 한국어로만 답변할 것. 모든 설명, 진행 상황, 분석 결과를 한국어로 작성할 것."
+    if parsed['system_prompt']:
+        parsed['system_prompt'] += LANG_HINT
+
     session_map = load_session_map()
     gemini_cmd = [GEMINI_BIN, '--yolo', '--output-format', 'stream-json']
 
